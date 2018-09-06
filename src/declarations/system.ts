@@ -12,7 +12,6 @@ export interface StencilSystem {
     packageDir?: string;
   };
   copy?(copyTasks: d.CopyTask[]): Promise<d.CopyResults>;
-  createDom?(): CreateDom;
   createFsWatcher?(events: d.BuildEvents, paths: string, opts?: any): d.FsWatcher;
   destroy?(): void;
   addDestroy?(fn: Function): void;
@@ -96,13 +95,6 @@ export interface SystemDetails {
 export interface Storage {
   get(key: string): Promise<any>;
   set(key: string, value: any): Promise<void>;
-}
-
-
-export interface CreateDom {
-  parse(hydrateOptions: d.OutputTargetHydrate): Window;
-  serialize(): string;
-  destroy(): void;
 }
 
 
