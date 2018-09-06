@@ -107,7 +107,7 @@ describe('validateConfig', () => {
     expect(outputTarget.prerenderLocations).toEqual([{ path: '/' }]);
     expect(outputTarget.prerenderPathHash).toBe(false);
     expect(outputTarget.prerenderPathQuery).toBe(false);
-    expect(outputTarget.prerenderMaxConcurrent).toBe(4);
+    expect(outputTarget.prerenderMaxConcurrent).toBe(12);
     expect(outputTarget.removeUnusedStyles).toBe(true);
   });
 

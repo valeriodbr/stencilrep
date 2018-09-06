@@ -76,7 +76,7 @@ const FULL_PRERENDER_DEFAULTS: d.OutputTargetWww = {
   prerenderUrlCrawl: true,
   prerenderPathHash: false,
   prerenderPathQuery: false,
-  prerenderMaxConcurrent: 4,
+  prerenderMaxConcurrent: 12,
   removeUnusedStyles: true
 };
 
