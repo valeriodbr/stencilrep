@@ -17,7 +17,6 @@ function minify(filePath) {
 
 const DIST = path.join(__dirname, '..', 'dist');
 [
-  path.join(DIST, 'sys', 'node', 'node-fetch.js'),
   path.join(DIST, 'sys', 'node', 'open-in-editor.js'),
   path.join(DIST, 'sys', 'node', 'sys-util.js'),
   path.join(DIST, 'sys', 'node', 'sys-worker.js'),
@@ -35,7 +34,6 @@ fs.emptyDirSync(DIST_LICENSES);
   'glob',
   'is-glob',
   'minimatch',
-  'node-fetch',
   'opn',
   'postcss',
   'semver',

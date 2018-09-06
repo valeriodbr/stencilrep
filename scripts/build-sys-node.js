@@ -14,7 +14,6 @@ const transpileSuccess = transpile(path.join('..', 'src', 'sys', 'node', 'tsconf
 
 if (transpileSuccess) {
   // bundle external deps
-  bundleExternal('node-fetch.js');
   bundleExternal('open-in-editor.js');
   bundleExternal('sys-util.js');
   bundleExternal('sys-worker.js');
