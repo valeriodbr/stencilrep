@@ -12,7 +12,8 @@ export async function taskBuild(process: NodeJS.Process, config: d.Config, flags
   }
 
   let devServerStart: Promise<d.DevServer> = null;
-  if (config.devServer && flags.serve) {
+
+  if (shouldStartDevServer(config, flags)) {
     devServerStart = compiler.startDevServer();
   }
 
@@ -48,4 +49,21 @@ export async function taskBuild(process: NodeJS.Process, config: d.Config, flags
   await validateCompilerVersion(config, latestVersion);
 
   return results;
+}
+
+
+function shouldStartDevServer(config: d.Config, flags: d.ConfigFlags) {
+  if (config.devServer && flags.serve) {
+    return true;
+  }
+
+  const prerenderOutputTarget = (config.outputTargets as d.OutputTargetWww[]).some(o => {
+    return o.type === 'www' && o.indexHtml && o.hydrateComponents && o.prerenderLocations && o.prerenderLocations.length > 0;
+  });
+
+  if (prerenderOutputTarget) {
+    return true;
+  }
+
+  return false;
 }

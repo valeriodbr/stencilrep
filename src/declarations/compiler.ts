@@ -39,7 +39,6 @@ export interface CompilerCtx {
   lastBuildResults?: d.BuildResults;
   lastBuildStyles?: Map<string, string>;
   lastJsModules?: d.JSModuleMap;
-  localPrerenderServer?: any;
   moduleFiles?: d.ModuleFiles;
   resolvedCollections?: string[];
   rootTsFiles?: string[];

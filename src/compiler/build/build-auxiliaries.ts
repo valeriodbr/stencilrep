@@ -2,7 +2,7 @@ import * as d from '../../declarations';
 import { generateDocs } from '../docs/docs';
 import { generateServiceWorkers } from '../service-worker/generate-sw';
 import { generateProxies } from '../distribution/distribution';
-import { prerenderOutputTargets } from '../prerender/prerender-app';
+import { prerenderApp } from '../prerender/prerender-app';
 
 
 export async function buildAuxiliaries(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, entryModules: d.EntryModule[], cmpRegistry: d.ComponentRegistry) {
@@ -12,7 +12,7 @@ export async function buildAuxiliaries(config: d.Config, compilerCtx: d.Compiler
 
   // let's prerender this first
   // and run service workers on top of this when it's done
-  await prerenderOutputTargets(config, compilerCtx, buildCtx, entryModules);
+  await prerenderApp(config, compilerCtx, buildCtx, entryModules);
 
   // generate component docs
   // and service workers can run in parallel

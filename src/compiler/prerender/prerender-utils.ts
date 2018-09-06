@@ -1,5 +1,4 @@
 import * as d from '../../declarations';
-import { pathJoin } from '../util';
 
 
 export function normalizePrerenderLocation(config: d.Config, outputTarget: d.OutputTargetWww, windowLocationHref: string, url: string) {
@@ -78,6 +77,38 @@ function prerenderFilter(url: d.Url) {
 }
 
 
+export function getPrerenderQueue(config: d.Config, outputTarget: d.OutputTargetWww) {
+  const prerenderHost = `http://prerender.stenciljs.com`;
+
+  const prerenderQueue: d.PrerenderLocation[] = [];
+
+  if (Array.isArray(outputTarget.prerenderLocations)) {
+    outputTarget.prerenderLocations.forEach(prerenderLocation => {
+      addLocationToProcess(config, outputTarget, prerenderHost, prerenderQueue, prerenderLocation.path);
+    });
+  }
+
+  return prerenderQueue;
+}
+
+
+function addLocationToProcess(config: d.Config, outputTarget: d.OutputTargetWww, windowLocationHref: string, prerenderQueue: d.PrerenderLocation[], locationUrl: string) {
+  const prerenderLocation = normalizePrerenderLocation(config, outputTarget, windowLocationHref, locationUrl);
+
+  if (!prerenderLocation || prerenderQueue.some(p => p.url === prerenderLocation.url)) {
+    // either it's not a good location to prerender
+    // or we've already got it in the queue
+    return;
+  }
+
+  // set that this location is pending to be prerendered
+  prerenderLocation.status = PrerenderStatus.Pending;
+
+  // add this to our queue of locations to prerender
+  prerenderQueue.push(prerenderLocation);
+}
+
+
 export function crawlAnchorsForNextUrls(config: d.Config, outputTarget: d.OutputTargetWww, prerenderQueue: d.PrerenderLocation[], windowLocationHref: string, anchors: d.HydrateAnchor[]) {
   anchors && anchors.forEach(anchor => {
     if (isValidCrawlableAnchor(anchor)) {
@@ -104,68 +135,8 @@ export function isValidCrawlableAnchor(anchor: d.HydrateAnchor) {
 }
 
 
-function addLocationToProcess(config: d.Config, outputTarget: d.OutputTargetWww, windowLocationHref: string, prerenderQueue: d.PrerenderLocation[], locationUrl: string) {
-  const prerenderLocation = normalizePrerenderLocation(config, outputTarget, windowLocationHref, locationUrl);
-
-  if (!prerenderLocation || prerenderQueue.some(p => p.url === prerenderLocation.url)) {
-    // either it's not a good location to prerender
-    // or we've already got it in the queue
-    return;
-  }
-
-  // set that this location is pending to be prerendered
-  prerenderLocation.status = 'pending';
-
-  // add this to our queue of locations to prerender
-  prerenderQueue.push(prerenderLocation);
-}
-
-
-export function getPrerenderQueue(config: d.Config, outputTarget: d.OutputTargetWww) {
-  const prerenderHost = `http://prerender.stenciljs.com`;
-
-  const prerenderQueue: d.PrerenderLocation[] = [];
-
-  if (Array.isArray(outputTarget.prerenderLocations)) {
-    outputTarget.prerenderLocations.forEach(prerenderLocation => {
-      addLocationToProcess(config, outputTarget, prerenderHost, prerenderQueue, prerenderLocation.path);
-    });
-  }
-
-  return prerenderQueue;
-}
-
-
-export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTargetWww, url: string) {
-  const parsedUrl = config.sys.url.parse(url);
-
-  let pathName = parsedUrl.pathname;
-  if (pathName.startsWith(outputTarget.baseUrl)) {
-    pathName = pathName.substring(outputTarget.baseUrl.length);
-
-  } else if (outputTarget.baseUrl === pathName + '/') {
-    pathName = '/';
-  }
-
-  // figure out the directory where this file will be saved
-  const dir = pathJoin(
-    config,
-    outputTarget.dir,
-    pathName
-  );
-
-  // create the full path where this will be saved (normalize for windowz)
-  let filePath: string;
-
-  if (dir + '/' === outputTarget.dir + '/') {
-    // this is the root of the output target directory
-    // use the configured index.html
-    const basename = outputTarget.indexHtml.substr(dir.length + 1);
-    filePath = pathJoin(config, dir, basename);
-
-  } else {
-    filePath = pathJoin(config, dir, `index.html`);
-  }
-
-  return filePath;
+export enum PrerenderStatus {
+  Pending,
+  Processing,
+  Completed
 }

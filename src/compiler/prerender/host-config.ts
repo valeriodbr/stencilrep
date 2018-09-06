@@ -4,25 +4,25 @@ import { getAppBuildDir, getBrowserFilename } from '../app/app-file-naming';
 import { pathJoin } from '../util';
 
 
-export async function generateHostConfig(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, entryModules: d.EntryModule[], hydrateResultss: d.HydrateResults[]) {
+export async function generateHostConfig(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, _entryModules: d.EntryModule[]) {
   const hostConfig: d.HostConfig = {
     hosting: {
       rules: []
     }
   };
 
-  hydrateResultss = hydrateResultss.sort((a, b) => {
-    if (a.url.toLowerCase() < b.url.toLowerCase()) return -1;
-    if (a.url.toLowerCase() > b.url.toLowerCase()) return 1;
-    return 0;
-  });
+  // hydrateResults = hydrateResults.sort((a, b) => {
+  //   if (a.url.toLowerCase() < b.url.toLowerCase()) return -1;
+  //   if (a.url.toLowerCase() > b.url.toLowerCase()) return 1;
+  //   return 0;
+  // });
 
-  hydrateResultss.forEach(hydrateResults => {
-    const hostRule = generateHostRule(config, compilerCtx, outputTarget, entryModules, hydrateResults);
-    if (hostRule) {
-      hostConfig.hosting.rules.push(hostRule);
-    }
-  });
+  // hydrateResults.forEach(hydrateResults => {
+  //   const hostRule = generateHostRule(config, compilerCtx, outputTarget, entryModules, hydrateResults);
+  //   if (hostRule) {
+  //     hostConfig.hosting.rules.push(hostRule);
+  //   }
+  // });
 
   addDefaults(config, outputTarget, hostConfig);
 
