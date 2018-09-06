@@ -19,7 +19,7 @@ export interface RenderOptions {
 export interface PrerenderLocation {
   url?: string;
   path?: string;
-  status?: 'pending' | 'processing' | 'complete';
+  status?: number;
 }
 
 
@@ -65,7 +65,6 @@ export interface HydrateOptions extends RenderOptions {
     get: (key: string) => string;
     originalUrl: string;
   };
-  html?: string;
   url?: string;
   path?: string;
   referrer?: string;

@@ -113,14 +113,14 @@ export async function optimizeIndexHtml(
     hydrateTarget.html = await compilerCtx.fs.readFile(hydrateTarget.indexHtml);
 
     try {
-      const dom = config.sys.createDom();
-      const win = dom.parse(hydrateTarget);
-      const doc = win.document;
+      const doc: HTMLDocument = null;
 
-      await optimizeHtml(config, compilerCtx, hydrateTarget, windowLocationPath, doc, diagnostics);
+      if (doc) {
+        await optimizeHtml(config, compilerCtx, hydrateTarget, windowLocationPath, doc, diagnostics);
 
-      // serialize this dom back into a string
-      await compilerCtx.fs.writeFile(hydrateTarget.indexHtml, dom.serialize());
+        // serialize this dom back into a string
+        // await compilerCtx.fs.writeFile(hydrateTarget.indexHtml, dom.serialize());
+      }
 
     } catch (e) {
       catchError(diagnostics, e);

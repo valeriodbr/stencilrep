@@ -1,170 +1,72 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
-import { crawlAnchorsForNextUrls, getPrerenderQueue, getWritePathFromUrl } from './prerender-utils';
 import { generateHostConfig } from './host-config';
+import { getPrerenderQueue } from './prerender-utils';
+import { PrerenderCtx } from './prerender-ctx';
 import { optimizeIndexHtml } from '../html/optimize-html';
-import { prerenderPath } from './prerender-path';
 
 
-export async function prerenderOutputTargets(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, entryModules: d.EntryModule[]) {
-  if (!config.srcIndexHtml) {
-    return;
-  }
-
+export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, _entryModules: d.EntryModule[]) {
+  // get output targets that are www and have an index.html file
   const outputTargets = (config.outputTargets as d.OutputTargetWww[]).filter(o => {
     return o.type === 'www' && o.indexHtml;
   });
 
-  await Promise.all(outputTargets.map(async outputTarget => {
+  if (outputTargets.length === 0) {
+    // no output targets want to prerender
+    return;
+  }
+
+  // kick off the prerendering for each output target (probably only 1, but who knows)
+  for (const outputTarget of outputTargets) {
+    // create a context object to hold all things useful during prerendering
+    const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
+    await prerenderCtx.init();
 
     if (outputTarget.hydrateComponents && outputTarget.prerenderLocations && outputTarget.prerenderLocations.length > 0) {
-      await prerenderOutputTarget(config, compilerCtx, buildCtx, outputTarget, entryModules);
+      await prerenderOutputTarget(prerenderCtx);
 
     } else {
       const windowLocationPath = outputTarget.baseUrl;
       await optimizeIndexHtml(config, compilerCtx, outputTarget, windowLocationPath, buildCtx.diagnostics);
     }
 
-  }));
+    // shut it down!
+    await prerenderCtx.destroy();
+  }
+
 }
 
 
-async function prerenderOutputTarget(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, entryModules: d.EntryModule[]) {
-  // if there was src index.html file, then the process before this one
-  // would have already loaded and updated the src index to its www path
-  // get the www index html content for the template for all prerendered pages
-  let indexHtml: string = null;
-  try {
-    indexHtml = await compilerCtx.fs.readFile(outputTarget.indexHtml);
-  } catch (e) {}
-
-  if (typeof indexHtml !== 'string') {
-    // looks like we don't have an index html file, which is fine
-    buildCtx.debug(`prerenderApp, missing index.html for prerendering`);
-    return [];
-  }
-
-  // get the prerender urls to queue up
-  const prerenderQueue = getPrerenderQueue(config, outputTarget);
+async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
+  // get the prerender urls queued up
+  const prerenderQueue = getPrerenderQueue(prerenderCtx.config, prerenderCtx.outputTarget);
 
   if (!prerenderQueue.length) {
-    const d = buildWarn(buildCtx.diagnostics);
+    const d = buildWarn(prerenderCtx.buildCtx.diagnostics);
     d.messageText = `No urls found in the prerender config`;
-    return [];
+    return;
   }
 
-  return runPrerenderApp(config, compilerCtx, buildCtx, outputTarget, entryModules, prerenderQueue, indexHtml);
-}
-
-
-async function runPrerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, entryModules: d.EntryModule[], prerenderQueue: d.PrerenderLocation[], indexHtml: string) {
+  // let's do this!!!
   // keep track of how long the entire build process takes
-  const timeSpan = buildCtx.createTimeSpan(`prerendering started`, !outputTarget.hydrateComponents);
-
-  const hydrateResults: d.HydrateResults[] = [];
+  const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`, !prerenderCtx.outputTarget.hydrateComponents);
 
   try {
-    await new Promise(resolve => {
-      drainPrerenderQueue(config, compilerCtx, buildCtx, outputTarget, prerenderQueue, indexHtml, hydrateResults, resolve);
-    });
+    await prerenderCtx.prerenderAll();
 
-    await generateHostConfig(config, compilerCtx, outputTarget, entryModules, hydrateResults);
+    // prerendering has finished
+    // let's build a host config from the data
+    await generateHostConfig(prerenderCtx.config, prerenderCtx.compilerCtx, prerenderCtx.outputTarget, null);
 
   } catch (e) {
-    catchError(buildCtx.diagnostics, e);
+    catchError(prerenderCtx.buildCtx.diagnostics, e);
   }
 
-  hydrateResults.forEach(hydrateResult => {
-    hydrateResult.diagnostics.forEach(diagnostic => {
-      buildCtx.diagnostics.push(diagnostic);
-    });
-  });
-
-  if (hasError(buildCtx.diagnostics)) {
+  if (hasError(prerenderCtx.buildCtx.diagnostics)) {
     timeSpan.finish(`prerendering failed`);
 
   } else {
-    timeSpan.finish(`prerendered urls: ${hydrateResults.length}`);
+    timeSpan.finish(`prerendered urls: ${prerenderQueue.length}`);
   }
-
-  if (compilerCtx.localPrerenderServer) {
-    compilerCtx.localPrerenderServer.close();
-    delete compilerCtx.localPrerenderServer;
-  }
-
-  return hydrateResults;
-}
-
-
-function drainPrerenderQueue(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, prerenderQueue: d.PrerenderLocation[], indexSrcHtml: string, hydrateResults: d.HydrateResults[], resolve: Function) {
-  for (var i = 0; i < outputTarget.prerenderMaxConcurrent; i++) {
-    const activelyProcessingCount = prerenderQueue.filter(p => p.status === 'processing').length;
-
-    if (activelyProcessingCount >= outputTarget.prerenderMaxConcurrent) {
-      // whooaa, slow down there buddy, let's not get carried away
-      break;
-    }
-
-    runNextPrerenderUrl(config, compilerCtx, buildCtx, outputTarget, prerenderQueue, indexSrcHtml, hydrateResults, resolve);
-  }
-
-  const remaining = prerenderQueue.filter(p => {
-    return p.status === 'processing' || p.status === 'pending';
-  }).length;
-
-  if (remaining === 0) {
-    // we're not actively processing anything
-    // and there aren't anymore urls in the queue to be prerendered
-    // so looks like our job here is done, good work team
-    resolve();
-  }
-}
-
-
-async function runNextPrerenderUrl(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, prerenderQueue: d.PrerenderLocation[], indexSrcHtml: string, hydrateResults: d.HydrateResults[], resolve: Function) {
-  const p = prerenderQueue.find(p => p.status === 'pending');
-  if (!p) return;
-
-  // we've got a url that's pending
-  // well guess what, it's go time
-  p.status = 'processing';
-
-  try {
-    // prender this path and wait on the results
-    const results = await prerenderPath(config, compilerCtx, buildCtx, outputTarget, indexSrcHtml, p);
-    // awesome!!
-
-    if (outputTarget.prerenderUrlCrawl) {
-      crawlAnchorsForNextUrls(config, outputTarget, prerenderQueue, results.url, results.anchors);
-    }
-
-    hydrateResults.push(results);
-
-    await writePrerenderDest(config, compilerCtx, outputTarget, results);
-
-  } catch (e) {
-    // darn, idk, bad news
-    catchError(buildCtx.diagnostics, e);
-  }
-
-  // this job is not complete
-  p.status = 'complete';
-
-  // let's try to drain the queue again and let this
-  // next call figure out if we're actually done or not
-  drainPrerenderQueue(config, compilerCtx, buildCtx, outputTarget, prerenderQueue, indexSrcHtml, hydrateResults, resolve);
-}
-
-
-async function writePrerenderDest(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, results: d.HydrateResults) {
-  // create the full path where this will be saved
-  const filePath = getWritePathFromUrl(config, outputTarget, results.url);
-
-  // add the prerender html content it to our collection of
-  // files that need to be saved when we're all ready
-  await compilerCtx.fs.writeFile(filePath, results.html, { useCache: false });
-
-  // write the files now
-  // and since we're not using cache it'll free up its memory
-  await compilerCtx.fs.commit();
 }
