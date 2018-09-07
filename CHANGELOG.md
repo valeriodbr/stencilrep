@@ -1,14 +1,15 @@
-<a name="0.13.0-4"></a>
-# 🌈 [0.13.0-4](https://github.com/ionic-team/stencil/compare/v0.12.4...v0.13.0-4) (2018-09-06)
+<a name="0.13.0-5"></a>
+# 🐦 [0.13.0-5](https://github.com/ionic-team/stencil/compare/v0.12.4...v0.13.0-5) (2018-09-06)
+
+### Stencil Testing Features
 
 Testing within Stencil is now broken up into two distinct types: Unit tests with [Jest](https://jestjs.io/), and End-to-end tests with [Puppeteer](https://pptr.dev/). Previous versions already used Jest, but Stencil provided a `TestWindow` and mocked the browser environment using JSDom.
 
 With the latest changes, the browser environment for e2e testing is done using Puppeteer, which provides many advantages Stencil can start to incorporate into its builds later on. This means the previous testing methods using `TestWindow` has been removed in place of Puppeteer's API.
 
+Unit testing is for testing small chunks of code at the lowest level. For example, when a method is given X, it should return Y. Unit tests should not be doing full rendering of the component, but rather focused on logic only. E2E tests would be testing rendering and components working together. For example, when `my-component` has the X attribute, the child component then renders the text Y, and expects to receive the event Z. By using Puppeteer for rendering tests (rather than a Node environment simulating how a browser works), your end-to-end tests are able to run within an actual browser in order to give better results.
+
 Stencil also provides many utility functions to help test Jest and Puppeteer. For example, a component's shadow dom can now be queried and tested with the Stencil utility functions built on top of Puppeteer. Tests can not only be provided mock HTML content, but they can also go to URLs of your app which Puppeteer is able to open up and test on Stencil's dev server.
-
-
-### Stencil Test Command
 
 End-to-end tests require a fresh build, dev-server, and puppeteer browser instance created before the tests can actually run. With the added build complexities, the `stencil test` command is able to organize the build requirements beforehand.
 
@@ -16,11 +17,24 @@ Previously, the `jest` command was directly within an `npm` script, and Jest's c
 
 With this release, the `jest` config within the app's `package.json` file can be safely removed, and the `npm` `test` script can be set to `stencil test --spec` instead of `jest`. It's also recommended to add an `npm` script `test.e2e` pointing to `stencil test --e2e`. Note that both unit tests and end-to-end tests could be ran with the same command, such as `stencil test --spec --e2e`. Below would be a common setup:
 
-```
+```javascript
 "scripts": {
   "test": "stencil test --spec",
+  "test.watch": "stencil test --spec --watch",
   "test.e2e": "stencil test --e2e"
 }
+```
+
+Providing a Jest config is no longer required and Stencil will apply defaults from data it has already gathered. For example, Stencil already knows what directories to look through, and what files are spec and e2e files. Jest can still be configured using the same config names, but now using the stencil config `testing` property. It's also recommended to use the typed version of stencil.config *.ts* so you'll be able to see the typed configs and descriptions.
+
+```javascript
+import { Config } from '@stencil/core';
+
+export const config: Config = {
+  testing: {
+    testPathIgnorePatterns: [...]
+  }
+};
 ```
 
 
@@ -56,6 +70,18 @@ it('should create toggle, unchecked by default', async () => {
   });
 });
 ```
+
+
+### Async @Method
+
+Stencil's architecture is async at all levels which allows for many performance benefits and ease of use. By ensuring publicly exposed methods using the `@Method` decorator return a promise:
+
+* Developers can call methods before the implementation was downloaded without `componentOnReady()`, which queues the method calls and resolves after the component has finished loading.
+* Interaction with the component is the same whether it still needs to be lazy-loaded, or is already fully hydrated.
+* By keeping a component's public API async, apps could move the components transparently to web workers and the API would still be the same.
+* Returning a promise is only required for publicly exposed methods which have the `@Method` decorator. All other component methods are private to the component and are not required to be async.
+
+Also note, developers should try to rely on publicly exposed methods as little as possible, and instead default to using properties and events as much as possible. As an app scales, we've found it's easier to manage and pass data through `@Prop` rather than public methods.
 
 
 ### Features

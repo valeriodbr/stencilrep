@@ -48,7 +48,7 @@ export async function runJestDevice(config: d.Config, jestConfigPath: string, sc
     }
 
     const p = cp.fork(jestBinModule, args, {
-      cwd: config.rootDir,
+      cwd: config.testing.rootDir,
       env: jestProcessEnv
     });
 
@@ -92,13 +92,57 @@ export async function setupJestConfig(config: d.Config) {
 }
 
 const JEST_CONFIG = [
+  'automock',
+  'bail',
+  'browser',
+  'cacheDirectory',
+  'clearMocks',
+  'collectCoverage',
+  'collectCoverageFrom',
+  'coverageDirectory',
+  'coveragePathIgnorePatterns',
+  'coverageReporters',
+  'coverageThreshold',
+  'errorOnDeprecated',
+  'forceCoverageMatch',
+  'globals',
+  'globalSetup',
+  'globalTeardown',
+  'moduleDirectories',
   'moduleFileExtensions',
+  'moduleNameMapper',
+  'modulePathIgnorePatterns',
+  'modulePaths',
+  'notify',
+  'notifyMode',
+  'preset',
+  'prettierPath',
+  'projects',
+  'reporters',
+  'resetMocks',
+  'resetModules',
+  'resolver',
+  'restoreMocks',
+  'rootDir',
+  'roots',
+  'runner',
+  'setupFiles',
   'setupTestFrameworkScriptFile',
+  'snapshotSerializers',
   'testEnvironment',
+  'testEnvironmentOptions',
   'testMatch',
   'testPathIgnorePatterns',
   'testRegex',
-  'transform'
+  'testResultsProcessor',
+  'testRunner',
+  'testURL',
+  'timers',
+  'transform',
+  'transformIgnorePatterns',
+  'unmockedModulePathPatterns',
+  'verbose',
+  'watchPathIgnorePatterns',
 ];
 
 
