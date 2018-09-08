@@ -33,20 +33,24 @@ export async function generateCoreBrowser(config: Config, compilerCtx: CompilerC
     jsContent = polyfillsContent + '\n' + jsContent;
   }
 
-  const coreFilename = getCoreFilename(config, buildConditionals.coreId, jsContent);
+  const coreFileName = getCoreFilename(config, buildConditionals.coreId, jsContent);
 
   // update the app core filename within the content
   jsContent = jsContent.replace(APP_NAMESPACE_PLACEHOLDER, config.fsNamespace);
 
-  const appCorePath = pathJoin(config, getAppBuildDir(config, outputTarget), coreFilename);
+  const coreFilePath = pathJoin(config, getAppBuildDir(config, outputTarget), coreFileName);
 
-  compilerCtx.appCoreWWWPath = appCorePath;
+  compilerCtx.appCoreWWWPath = coreFilePath;
 
-  await compilerCtx.fs.writeFile(appCorePath, jsContent);
+  await compilerCtx.fs.writeFile(coreFilePath, jsContent);
 
-  timespan.finish(`generateCoreBrowser ${buildConditionals.coreId} finished, ${relPath}`);
+  timespan.finish(`generateCoreBrowser ${buildConditionals.coreId} finished, ${relPath}/${coreFileName}`);
 
-  return coreFilename;
+  return {
+    coreFileName,
+    coreFilePath,
+    jsContent
+  };
 }
 
 

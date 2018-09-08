@@ -20,6 +20,7 @@ export interface DevServerConfig {
   hotReplacement?: boolean;
   initialLoadUrl?: string;
   openBrowser?: boolean;
+  openDevClient?: boolean;
   port?: number;
   protocol?: 'http' | 'https';
   root?: string;

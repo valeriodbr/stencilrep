@@ -81,8 +81,18 @@ async function generateBrowserCoreEsm(config: d.Config, compilerCtx: d.CompilerC
   // figure out which sections should be included in the core build
   const buildConditionals = await setBuildConditionals(config, compilerCtx, 'core', buildCtx, entryModules);
 
-  const coreFilename = await generateCoreBrowser(config, compilerCtx, buildCtx, outputTarget, globalJsContentsEsm, buildConditionals);
-  appRegistry.core = coreFilename;
+  const core = await generateCoreBrowser(config, compilerCtx, buildCtx, outputTarget, globalJsContentsEsm, buildConditionals);
+  appRegistry.core = core.coreFileName;
+
+  buildCtx.coreFileName = appRegistry.core;
+
+  if (config.flags.prerender) {
+    const buildSsrConditionals = await setBuildConditionals(config, compilerCtx, 'core.ssr', buildCtx, entryModules);
+
+    const coreSsr = await generateCoreBrowser(config, compilerCtx, buildCtx, outputTarget, globalJsContentsEsm, buildSsrConditionals);
+
+    buildCtx.coreSsrFileName = coreSsr.coreFileName;
+  }
 }
 
 
@@ -93,8 +103,8 @@ async function generateBrowserCoreEs5(config: d.Config, compilerCtx: d.CompilerC
 
     const buildConditionalsEs5 = await setBuildConditionals(config, compilerCtx, 'core.pf', buildCtx, entryModules);
 
-    const coreFilenameEs5 = await generateCoreBrowser(config, compilerCtx, buildCtx, outputTarget, globalJsContentsEs5, buildConditionalsEs5);
-    appRegistry.corePolyfilled = coreFilenameEs5;
+    const corePf = await generateCoreBrowser(config, compilerCtx, buildCtx, outputTarget, globalJsContentsEs5, buildConditionalsEs5);
+    appRegistry.corePolyfilled = corePf.coreFileName;
 
   } else {
     // not doing an es5, probably in dev mode

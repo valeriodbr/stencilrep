@@ -16,7 +16,7 @@ export async function serveFile(devServerConfig: d.DevServerConfig, fs: d.FileSy
       // easy text file, use the internal cache
       let content = await fs.readFile(req.filePath);
 
-      if (util.isHtmlFile(req.filePath) && !util.isDevServerClient(req.pathname)) {
+      if (util.isHtmlFile(req.filePath) && !util.isDevServerClient(req.pathname) && devServerConfig.openDevClient) {
         // auto inject our dev server script
         content += getDevServerClientScript(devServerConfig, req);
 

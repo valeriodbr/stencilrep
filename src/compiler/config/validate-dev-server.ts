@@ -40,6 +40,10 @@ export function validateDevServer(config: d.Config) {
     config.devServer.openBrowser = false;
   }
 
+  if (typeof config.devServer.openDevClient !== 'boolean') {
+    config.devServer.openDevClient = true;
+  }
+
   let serveDir: string = null;
   let baseUrl: string = null;
   const wwwOutputTarget = config.outputTargets.find(o => o.type === 'www') as d.OutputTargetWww;

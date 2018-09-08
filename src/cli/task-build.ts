@@ -13,7 +13,13 @@ export async function taskBuild(process: NodeJS.Process, config: d.Config, flags
 
   let devServerStart: Promise<d.DevServer> = null;
 
-  if (shouldStartDevServer(config, flags)) {
+  const isPrerendering = shouldPrerender(config);
+  if (isPrerendering) {
+    config.devServer.openBrowser = false;
+    config.devServer.openDevClient = false;
+  }
+
+  if ((config.devServer && flags.serve) || isPrerendering) {
     devServerStart = compiler.startDevServer();
   }
 
@@ -36,7 +42,14 @@ export async function taskBuild(process: NodeJS.Process, config: d.Config, flags
     process.exit(1);
   }
 
-  if (config.watch || devServerStart) {
+  if (isPrerendering && devServerStart && !config.watch) {
+    config.sys.destroy();
+
+    if (devServer) {
+      await devServer.close();
+    }
+
+  } else if (config.watch || devServerStart) {
     process.once('SIGINT', () => {
       config.sys.destroy();
 
@@ -52,18 +65,10 @@ export async function taskBuild(process: NodeJS.Process, config: d.Config, flags
 }
 
 
-function shouldStartDevServer(config: d.Config, flags: d.ConfigFlags) {
-  if (config.devServer && flags.serve) {
-    return true;
-  }
-
-  const prerenderOutputTarget = (config.outputTargets as d.OutputTargetWww[]).some(o => {
+function shouldPrerender(config: d.Config) {
+  const prerenderOutputTarget = (config.outputTargets as d.OutputTargetWww[]).find(o => {
     return o.type === 'www' && o.indexHtml && o.hydrateComponents && o.prerenderLocations && o.prerenderLocations.length > 0;
   });
 
-  if (prerenderOutputTarget) {
-    return true;
-  }
-
-  return false;
+  return !!(prerenderOutputTarget && prerenderOutputTarget.hydrateComponents);
 }

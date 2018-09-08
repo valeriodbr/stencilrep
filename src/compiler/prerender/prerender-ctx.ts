@@ -13,10 +13,11 @@ export class PrerenderCtx {
   completed = new Set();
 
   constructor(public config: d.Config, public compilerCtx: d.CompilerCtx, public buildCtx: d.BuildCtx, public outputTarget: d.OutputTargetWww) {
-    this.host = getHost(config, outputTarget);
   }
 
-  async init() {
+  async startBrowser() {
+    this.host = getHost(this.config, this.outputTarget);
+
     // let's make sure they have what we need installed
     await ensurePuppeteer(this.config);
 
@@ -84,7 +85,7 @@ export class PrerenderCtx {
     const timeSpan = this.buildCtx.createTimeSpan(`${msg}, started: ${url}`);
 
     // prerender this url and wait on the results
-    const results = await prerender(this.config, this.outputTarget, this.browser, url);
+    const results = await prerender(this.config, this.outputTarget, this.buildCtx, this.browser, url);
 
     // we're done processing now
     this.processing.delete(url);

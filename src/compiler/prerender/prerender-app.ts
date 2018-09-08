@@ -2,7 +2,6 @@ import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
 import { generateHostConfig } from './host-config';
 import { PrerenderCtx } from './prerender-ctx';
-import { optimizeIndexHtml } from '../html/optimize-html';
 
 
 export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, _entryModules: d.EntryModule[]) {
@@ -18,22 +17,16 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
 
   // kick off the prerendering for each output target (probably only 1, but who knows)
   for (const outputTarget of outputTargets) {
-    // create a context object to hold all things useful during prerendering
-    const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
-    await prerenderCtx.init();
-
-    console.log('outputTarget.prerenderLocations', outputTarget.prerenderLocations)
-
     if (outputTarget.hydrateComponents && outputTarget.prerenderLocations && outputTarget.prerenderLocations.length > 0) {
+      // create a context object to hold all things useful during prerendering
+      const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
+
+      await prerenderCtx.startBrowser();
       await prerenderOutputTarget(prerenderCtx);
 
-    } else {
-      const windowLocationPath = outputTarget.baseUrl;
-      await optimizeIndexHtml(config, compilerCtx, outputTarget, windowLocationPath, buildCtx.diagnostics);
+      // shut it down!
+      await prerenderCtx.destroy();
     }
-
-    // shut it down!
-    await prerenderCtx.destroy();
   }
 }
 

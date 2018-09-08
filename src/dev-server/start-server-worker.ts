@@ -14,8 +14,10 @@ export async function startDevServerWorker(process: NodeJS.Process, devServerCon
     // create the http server listening for and responding to requests from the browser
     let httpServer = await createHttpServer(devServerConfig, fs, destroys);
 
-    // upgrade web socket requests the server receives
-    createWebSocket(process, httpServer, destroys);
+    if (devServerConfig.openDevClient) {
+      // upgrade web socket requests the server receives
+      createWebSocket(process, httpServer, destroys);
+    }
 
     // start listening!
     httpServer.listen(devServerConfig.port, devServerConfig.address);

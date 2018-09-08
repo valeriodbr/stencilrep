@@ -3,7 +3,7 @@ import * as puppeteer from 'puppeteer'; // for types only
 import { catchError } from '../util';
 
 
-export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, browser: puppeteer.Browser, url: string) {
+export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, url: string) {
   const results: d.PrerenderResults = {
     url: url,
     html: null,
@@ -23,7 +23,7 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
 
     addPageListeners(page, results);
 
-    await interceptRequests(config, outputTarget, page);
+    await interceptRequests(config, outputTarget, buildCtx, page);
 
     await page.goto(url, {
       waitUntil: 'load'
@@ -169,22 +169,39 @@ interface ExtractData {
 }
 
 
-async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetWww, page: puppeteer.Page) {
+async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, page: puppeteer.Page) {
   await page.setRequestInterception(true);
 
-  page.on('request', interceptedRequest => {
-    if (shouldAbort(config, outputTarget, interceptedRequest.url())) {
-      interceptedRequest.abort();
+  page.on('request', async (interceptedRequest) => {
+    let url = interceptedRequest.url();
+    const parsedUrl = config.sys.url.parse(url);
+
+    if (shouldAbort(outputTarget, parsedUrl)) {
+      await interceptedRequest.abort();
+      return;
+    }
+
+    const pathSplit = parsedUrl.pathname.split('/');
+    const fileName = pathSplit[pathSplit.length - 1];
+
+    if (fileName === buildCtx.coreFileName) {
+      console.log('fileName', fileName)
+
+      url = url.replace(buildCtx.coreFileName, buildCtx.coreSsrFileName);
+
+      console.log('url', url)
+
+      await interceptedRequest.continue({
+        url: url
+      });
 
     } else {
-      interceptedRequest.continue();
+      await interceptedRequest.continue();
     }
   });
 }
 
-function shouldAbort(config: d.Config, outputTargets: d.OutputTargetWww, url: string) {
-  const parsedUrl = config.sys.url.parse(url);
-
+function shouldAbort(outputTargets: d.OutputTargetWww, parsedUrl: d.Url) {
   return outputTargets.prerenderAbortRequests.some(abortReq => {
     if (typeof abortReq.domain === 'string') {
       return parsedUrl.host.includes(abortReq.domain);

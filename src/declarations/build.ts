@@ -17,6 +17,8 @@ export interface BuildCtx {
   bundleBuildCount: number;
   collections: d.Collection[];
   components: string[];
+  coreFileName?: string;
+  coreSsrFileName?: string;
   createTimeSpan(msg: string, debug?: boolean): d.LoggerTimeSpan;
   data: any;
   debug: (msg: string) => void;
