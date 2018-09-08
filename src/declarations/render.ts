@@ -16,15 +16,35 @@ export interface RenderOptions {
 }
 
 
-export interface PrerenderLocation {
-  url?: string;
-  path?: string;
-  status?: number;
+export interface PrerenderResults {
+  url: string;
+  html: string;
+  anchorUrls: string[];
+  diagnostics: d.Diagnostic[];
+  pageErrors: string[];
+  requestFailures: string[];
+  requestSuccesses: string[];
+  metrics: PageMetrics;
+}
+
+
+export interface PageMetrics {
+  appLoadDuration?: number;
+  jsEventListeners?: number;
+  nodes?: number;
+  layoutCount?: number;
+  recalcStyleCount?: number;
+  layoutDuration?: number;
+  recalcStyleDuration?: number;
+  scriptDuration?: number;
+  taskDuration?: number;
+  jsHeapUsedSize?: number;
+  jsHeapTotalSize?: number;
 }
 
 
 export interface HydrateResults {
-  diagnostics: d.Diagnostic[];
+  diagnostics?: d.Diagnostic[];
   url?: string;
   host?: string;
   hostname?: string;
@@ -36,7 +56,7 @@ export interface HydrateResults {
   hash?: string;
   html?: string;
   styles?: string;
-  anchors?: HydrateAnchor[];
+  urls?: string[];
   root?: HTMLElement;
   components?: HydrateComponent[];
   styleUrls?: string[];
@@ -49,13 +69,6 @@ export interface HydrateComponent {
   tag: string;
   count?: number;
   depth?: number;
-}
-
-
-export interface HydrateAnchor {
-  href?: string;
-  target?: string;
-  [attrName: string]: string | undefined;
 }
 
 

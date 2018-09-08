@@ -1,15 +1,19 @@
 import * as d from '../../declarations';
-import { catchError } from '../util';
-import { closePuppeteerBrowser, ensurePuppeteer, prerenderWithBrowser, startPuppeteerBrowser } from './puppeteer';
-import { PrerenderStatus } from './prerender-utils';
+import { closePuppeteerBrowser, ensurePuppeteer, prerender, startPuppeteerBrowser } from './puppeteer';
+import { getHost, queueUrlsToPrerender } from './prerender-utils';
+import { writePrerenderResults } from './prerender-write';
+import { hasError } from '../util';
 
 
 export class PrerenderCtx {
   private browser: any = null;
-  private prerenderingDone: Function;
-  queue: d.PrerenderLocation[] = [];
+  private host: string = null;
+  queue: string[] = [];
+  processing = new Set();
+  completed = new Set();
 
   constructor(public config: d.Config, public compilerCtx: d.CompilerCtx, public buildCtx: d.BuildCtx, public outputTarget: d.OutputTargetWww) {
+    this.host = getHost(config, outputTarget);
   }
 
   async init() {
@@ -20,14 +24,18 @@ export class PrerenderCtx {
     this.browser = await startPuppeteerBrowser(this.config);
   }
 
-  async prerenderAll() {
+  async prerenderAll(urls: string[]) {
     // promise resolves when all locations have been prerendered
     await new Promise(prerenderingDone => {
-      this.prerenderingDone = prerenderingDone;
-      this.compilerCtx.events.subscribe('prerenderedLocation', this.drainQueue.bind(this));
+      this.compilerCtx.events.subscribe('prerenderedLocation', this.drainQueue.bind(this, prerenderingDone));
+
+      // add these urls to our array of pending urls
+      this.queue.push(...urls);
 
       // let's kick it off
-      this.next();
+      setTimeout(() => {
+        this.next();
+      });
     });
   }
 
@@ -35,65 +43,72 @@ export class PrerenderCtx {
     this.compilerCtx.events.emit('prerenderedLocation');
   }
 
-  drainQueue() {
+  drainQueue(prerenderingDone: Function) {
     // listen for when a location has finished prerendering
     // check to see if everything in the queue has been completed
-    const allCompleted = this.queue.every(p => p.status === PrerenderStatus.Completed);
+    const allCompleted = (this.processing.size === 0 && this.queue.length === 0);
     if (allCompleted) {
       // we're not actively processing anything
       // and there aren't anymore urls in the queue to be prerendered
       // so looks like our job here is done, good work team
-      this.prerenderingDone();
+      prerenderingDone();
       return;
     }
 
     // more in the queue yet, let's keep going
     for (let i = 0; i < this.outputTarget.prerenderMaxConcurrent; i++) {
       // count how many are actively processing right now
-      const activelyProcessingCount = this.queue.filter(p => p.status === PrerenderStatus.Processing).length;
-
-      if (activelyProcessingCount >= this.outputTarget.prerenderMaxConcurrent) {
+      if (this.processing.size >= this.outputTarget.prerenderMaxConcurrent) {
         // whooaa, slow down there buddy, let's not get carried away
-        break;
+        return;
       }
 
-      const prerenderLocation = this.queue.find(p => p.status === PrerenderStatus.Pending);
-      if (!prerenderLocation) {
+      const prerenderUrl = this.queue.shift();
+      if (!prerenderUrl) {
         // no pending locations in the queue, let's chill out
-        break;
+        // there's probably some in the processing still being worked on
+        return;
       }
 
-      // update the status to say the this location is actively processing
-      prerenderLocation.status = PrerenderStatus.Processing;
+      // move this url to processing
+      this.processing.add(prerenderUrl);
 
       // begin the async prerendering operation for this location
-      this.prerender(prerenderLocation);
+      this.prerender(prerenderUrl);
     }
   }
 
-  async prerender(prerenderLocation: d.PrerenderLocation) {
+  async prerender(url: string) {
     const msg = this.outputTarget.hydrateComponents ? 'prerender' : 'optimize html';
-    const timeSpan = this.buildCtx.createTimeSpan(`${msg}, started: ${prerenderLocation.path}`);
 
-    const results: d.HydrateResults = {
-      diagnostics: []
-    };
+    const timeSpan = this.buildCtx.createTimeSpan(`${msg}, started: ${url}`);
 
-    try {
-      await prerenderWithBrowser(this.browser, prerenderLocation);
+    // prerender this url and wait on the results
+    const results = await prerender(this.config, this.outputTarget, this.browser, url);
 
-      timeSpan.finish(`${msg}, finished: ${prerenderLocation.path}`);
+    // we're done processing now
+    this.processing.delete(url);
 
-    } catch (e) {
-      // ahh man! what happened!
-      timeSpan.finish(`${msg}, failed: ${prerenderLocation.path}`);
+    // consider it completed
+    this.completed.add(url);
 
-      catchError(this.buildCtx.diagnostics, e);
+    if (!hasError(results.diagnostics)) {
+      // no errors, write out the results and modify the html as needed
+      const urls = await writePrerenderResults(this.config, this.compilerCtx, this.buildCtx, this.outputTarget, results);
+
+      if (this.outputTarget.prerenderUrlCrawl) {
+        // we do want to keep crawling urls
+        // add any urls we found to the queue to be prerendered still
+        urls.forEach(url => {
+          queueUrlsToPrerender(this.config, this.outputTarget, this.host, this.queue, this.processing, this.completed, url);
+        });
+      }
     }
 
-    this.next();
+    timeSpan.finish(`${msg}, finished: ${url}`);
 
-    return results;
+    // trigger to the queue we're all done and ready for the next one
+    this.next();
   }
 
   async destroy() {
@@ -103,8 +118,6 @@ export class PrerenderCtx {
     this.config = null;
     this.compilerCtx = null;
     this.buildCtx = null;
-    this.prerenderAll = null;
-    this.queue.length = 0;
   }
 
 }

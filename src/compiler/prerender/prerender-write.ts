@@ -1,30 +1,44 @@
 import * as d from '../../declarations';
-import { buildError, catchError, pathJoin } from '../util';
-import { crawlAnchorsForNextUrls } from './prerender-utils';
-import { PrerenderCtx } from './prerender-ctx';
+import { buildError, catchError, hasError, pathJoin } from '../util';
 
 
-export async function handlePrerenderResults(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, prerenderQueue: d.PrerenderLocation[], results: d.HydrateResults) {
-  if (outputTarget.prerenderUrlCrawl) {
-    // let's keep finding urls to add to our queue from the
-    // anchor hrefs found in this last prerender
-    crawlAnchorsForNextUrls(config, outputTarget, prerenderQueue, results.url, results.anchors);
+export async function writePrerenderResults(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
+  const anchorUrls: string[] = [];
+
+  console.log(results);
+
+  if (typeof results.html !== 'string') {
+    const error = buildError(results.diagnostics);
+    error.messageText = `invalid prerendered html`;
   }
 
-  for (let i = 0; i < 5; i++) {
-    const success = await writePrerenderDest(config, compilerCtx, buildCtx, outputTarget, results);
-    if (success) {
-      // we wrote the prerendered content with no issues :)
-      break;
+  buildCtx.diagnostics.push(...results.diagnostics);
+
+  if (hasError(results.diagnostics)) {
+    return anchorUrls;
+  }
+
+  try {
+    for (let i = 0; i < 5; i++) {
+      const success = await writePrerenderContent(config, compilerCtx, buildCtx, outputTarget, results);
+      if (success) {
+        // we wrote the prerendered content with no issues :)
+        break;
+      }
+
+      // this should pretty much never happen, but who knows
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
-    // this should pretty much never happen, but who knows
-    await new Promise(resolve => setTimeout(resolve, 250));
+  } catch (e) {
+    catchError(buildCtx.diagnostics, e);
   }
+
+  return anchorUrls;
 }
 
 
-async function writePrerenderDest(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.HydrateResults) {
+async function writePrerenderContent(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.HydrateResults) {
   let success = false;
 
   // create the full path where this will be saved

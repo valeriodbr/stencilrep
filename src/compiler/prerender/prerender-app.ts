@@ -1,7 +1,6 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
 import { generateHostConfig } from './host-config';
-import { getPrerenderQueue } from './prerender-utils';
 import { PrerenderCtx } from './prerender-ctx';
 import { optimizeIndexHtml } from '../html/optimize-html';
 
@@ -23,6 +22,8 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
     const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
     await prerenderCtx.init();
 
+    console.log('outputTarget.prerenderLocations', outputTarget.prerenderLocations)
+
     if (outputTarget.hydrateComponents && outputTarget.prerenderLocations && outputTarget.prerenderLocations.length > 0) {
       await prerenderOutputTarget(prerenderCtx);
 
@@ -34,15 +35,14 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
     // shut it down!
     await prerenderCtx.destroy();
   }
-
 }
 
 
 async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
   // get the prerender urls queued up
-  const prerenderQueue = getPrerenderQueue(prerenderCtx.config, prerenderCtx.outputTarget);
+  const prerenderUrlsQueue = getPrerenderUrlsQueue(prerenderCtx.config, prerenderCtx.outputTarget);
 
-  if (!prerenderQueue.length) {
+  if (!prerenderUrlsQueue.length) {
     const d = buildWarn(prerenderCtx.buildCtx.diagnostics);
     d.messageText = `No urls found in the prerender config`;
     return;
@@ -53,7 +53,7 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
   const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`, !prerenderCtx.outputTarget.hydrateComponents);
 
   try {
-    await prerenderCtx.prerenderAll();
+    await prerenderCtx.prerenderAll(prerenderUrlsQueue);
 
     // prerendering has finished
     // let's build a host config from the data
@@ -67,6 +67,19 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
     timeSpan.finish(`prerendering failed`);
 
   } else {
-    timeSpan.finish(`prerendered urls: ${prerenderQueue.length}`);
+    timeSpan.finish(`prerendered urls: ${prerenderCtx.completed.size}`);
   }
 }
+
+
+function getPrerenderUrlsQueue(config: d.Config, outputTarget: d.OutputTargetWww) {
+  let domain = config.devServer.browserUrl;
+  if (domain.endsWith('/')) {
+    domain = domain.substring(0, domain.length - 1);
+  }
+
+  return outputTarget.prerenderLocations.map(prerenderLocation => {
+    return domain + prerenderLocation.path;
+  });
+}
+

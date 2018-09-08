@@ -57,6 +57,13 @@ export function validatePrerender(config: d.Config, outputTarget: d.OutputTarget
     });
   }
 
+  if (!Array.isArray(outputTarget.prerenderAbortRequests)) {
+    outputTarget.prerenderAbortRequests = [
+      { domain: 'google-analytics' },
+      { domain: 'doubleclick' }
+    ];
+  }
+
   if (outputTarget.hydrateComponents) {
     config.buildEs5 = true;
   }

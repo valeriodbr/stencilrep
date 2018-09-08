@@ -18,7 +18,7 @@ transpile(path.join('..', 'src', 'build-conditionals', 'tsconfig.json'));
   'build-dev-server.js',
   'build-dev-server-client.js',
   'build-renderer-vdom.js',
-  'build-server.js',
+  // 'build-server.js',
   'build-submodules.js',
   'build-sys-node.js',
   'build-testing.js'

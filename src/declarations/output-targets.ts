@@ -19,12 +19,16 @@ export interface OutputTargetWww extends OutputTargetBase {
   inlineLoaderScript?: boolean;
   inlineAssetsMaxSize?: number;
   prerenderUrlCrawl?: boolean;
-  prerenderLocations?: d.PrerenderLocation[];
+  prerenderLocations?: { path: string; }[];
   prerenderFilter?: (url: d.Url) => boolean;
   prerenderPathHash?: boolean;
   prerenderPathQuery?: boolean;
   prerenderMaxConcurrent?: number;
+  removeHtmlComments?: boolean;
   removeUnusedStyles?: boolean;
+  prerenderAbortRequests?: {
+    domain?: string;
+  }[];
 }
 
 export interface OutputTargetHydrate extends OutputTargetWww, d.HydrateOptions {

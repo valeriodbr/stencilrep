@@ -12,6 +12,7 @@ export class BuildEvents implements d.BuildEvents {
   subscribe(eventName: 'fsChange', cb: (fsChange: d.FsWatchResults) => void): Function;
   subscribe(eventName: 'buildFinish', cb: (buildResults: d.BuildResults) => void): Function;
   subscribe(eventName: 'buildLog', cb: (buildLog: d.BuildLog) => void): Function;
+  subscribe(eventName: 'prerenderedLocation', cb: () => void): Function;
   subscribe(eventName: d.CompilerEventName, cb: Function): Function {
     const evName = getEventName(eventName);
 
