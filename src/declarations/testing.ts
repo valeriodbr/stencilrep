@@ -12,6 +12,7 @@ declare global {
 
       toHaveClass(expectClassName: string): void;
       toHaveClasses(expectClassNames: string[]): void;
+      toMatchClasses(expectClassNames: string[]): void;
 
       toHaveReceivedEvent(): void;
       toHaveReceivedEventTimes(count: number): void;
@@ -101,6 +102,11 @@ export interface TestingConfig {
    * Additional arguments to pass to the browser instance.
    */
   browserArgs?: string[];
+
+  /**
+   * Path to a Chromium or Chrome executable to run instead of the bundled Chromium.
+   */
+  browserExecutablePath?: string;
 
   /**
    * Whether to run browser e2e tests in headless mode. Defaults to true.
