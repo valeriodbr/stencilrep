@@ -2,7 +2,7 @@
 
 export interface BuildConditionals {
   [key: string]: any;
-  coreId: 'core' | 'core.pf' | 'core.ssr' | 'esm.es5';
+  coreId: 'core' | 'core.pf' | 'core.prerender' | 'esm.es5';
   polyfills: boolean;
   es5: boolean;
   cssVarShim: boolean;

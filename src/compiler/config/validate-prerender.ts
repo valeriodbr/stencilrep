@@ -64,6 +64,10 @@ export function validatePrerender(config: d.Config, outputTarget: d.OutputTarget
     ];
   }
 
+  if (typeof outputTarget.prettyHtml !== 'boolean') {
+    outputTarget.prettyHtml = false;
+  }
+
   if (outputTarget.hydrateComponents) {
     config.buildEs5 = true;
   }

@@ -47,7 +47,7 @@ export function getDefaultBuildConditionals(): d.BuildConditionals {
 export async function setBuildConditionals(
   config: d.Config,
   compilerCtx: d.CompilerCtx,
-  coreId: 'core' | 'core.pf' | 'core.ssr' | 'esm.es5',
+  coreId: 'core' | 'core.pf' | 'core.prerender' | 'esm.es5',
   buildCtx: d.BuildCtx,
   entryModules: d.EntryModule[]
 ): Promise<d.BuildConditionals> {
@@ -120,12 +120,12 @@ export async function setBuildConditionals(
     coreBuild.slotPolyfill = false;
     compilerCtx.lastBuildConditionalsBrowserEsm = coreBuild;
 
-  } else if (coreId === 'core.ssr') {
+  } else if (coreId === 'core.prerender') {
     coreBuild.browserModuleLoader = true;
     coreBuild.slotPolyfill = true;
     coreBuild.prerenderServerSide = true;
     coreBuild.prerenderClientSide = false;
-    compilerCtx.lastBuildConditionalsBrowserSsr = coreBuild;
+    compilerCtx.lastBuildConditionalsPrerender = coreBuild;
 
   } else if (coreId === 'core.pf') {
     coreBuild.browserModuleLoader = true;
@@ -147,7 +147,7 @@ export async function setBuildConditionals(
 }
 
 
-export function getLastBuildConditionals(compilerCtx: d.CompilerCtx, coreId: 'core' | 'core.pf' | 'core.ssr' | 'esm.es5', buildCtx: d.BuildCtx) {
+export function getLastBuildConditionals(compilerCtx: d.CompilerCtx, coreId: 'core' | 'core.pf' | 'core.prerender' | 'esm.es5', buildCtx: d.BuildCtx) {
   if (buildCtx.isRebuild && Array.isArray(buildCtx.filesChanged)) {
     // this is a rebuild and we do have lastBuildConditionals already
     const hasChangedTsFile = buildCtx.filesChanged.some(filePath => {
@@ -161,8 +161,8 @@ export function getLastBuildConditionals(compilerCtx: d.CompilerCtx, coreId: 'co
         return compilerCtx.lastBuildConditionalsBrowserEsm;
       }
 
-      if (coreId === 'core.ssr' && compilerCtx.lastBuildConditionalsBrowserSsr) {
-        return compilerCtx.lastBuildConditionalsBrowserSsr;
+      if (coreId === 'core.prerender' && compilerCtx.lastBuildConditionalsPrerender) {
+        return compilerCtx.lastBuildConditionalsPrerender;
       }
 
       if (coreId === 'core.pf' && compilerCtx.lastBuildConditionalsBrowserEs5) {

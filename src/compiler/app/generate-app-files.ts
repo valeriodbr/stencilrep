@@ -87,7 +87,7 @@ async function generateBrowserCoreEsm(config: d.Config, compilerCtx: d.CompilerC
   buildCtx.coreFileName = appRegistry.core;
 
   if (config.flags.prerender) {
-    const buildSsrConditionals = await setBuildConditionals(config, compilerCtx, 'core.ssr', buildCtx, entryModules);
+    const buildSsrConditionals = await setBuildConditionals(config, compilerCtx, 'core.prerender', buildCtx, entryModules);
 
     const coreSsr = await generateCoreBrowser(config, compilerCtx, buildCtx, outputTarget, globalJsContentsEsm, buildSsrConditionals);
 

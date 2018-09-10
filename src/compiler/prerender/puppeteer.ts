@@ -1,6 +1,8 @@
 import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
 import { catchError } from '../util';
+import { parse } from 'parse5';
+import { serialize } from '../../testing/mock-doc/serialize-node';
 
 
 export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, url: string) {
@@ -130,6 +132,13 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
   results.metrics.appLoadDuration = extractData.stencilAppLoadDuration;
 
   results.html = await page.content();
+
+  if (outputTarget.prettyHtml) {
+    const doc = parse(results.html);
+    results.html = serialize(doc, {
+      pretty: true
+    });
+  }
 }
 
 
@@ -185,11 +194,7 @@ async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetW
     const fileName = pathSplit[pathSplit.length - 1];
 
     if (fileName === buildCtx.coreFileName) {
-      console.log('fileName', fileName)
-
       url = url.replace(buildCtx.coreFileName, buildCtx.coreSsrFileName);
-
-      console.log('url', url)
 
       await interceptedRequest.continue({
         url: url
