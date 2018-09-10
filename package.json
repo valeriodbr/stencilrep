@@ -1,6 +1,6 @@
 {
   "name": "@stencil/core",
-  "version": "0.13.0-5",
+  "version": "0.13.0-7",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -92,6 +92,7 @@
     "puppeteer": "~1.7.0",
     "semver": "5.5.0",
     "terser": "3.8.1",
+    "tslib": "^1.9.3",
     "tslint": "^5.9.1",
     "tslint-ionic-rules": "0.0.13",
     "turbocolor": "^2.4.1",

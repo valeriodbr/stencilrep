@@ -2,46 +2,25 @@ import * as d from '../../declarations';
 import * as pd from './puppeteer-declarations';
 import * as puppeteer from 'puppeteer';
 import { EventSpy, addE2EListener } from './puppeteer-events';
+import { find } from './puppeteer-find';
 import { MockElement } from '../mock-doc/node';
 import { parseFragment } from '../parse-html';
+import { MockDocumentFragment } from '../mock-doc/document-fragment';
 
 
 export class E2EElement extends MockElement implements pd.E2EElementInternal {
-  lightSelector: string;
-  shadowSelector: string;
-  queuedActions: ElementActions[] = [];
+  private _queuedActions: ElementAction[] = [];
 
-  constructor(private page: pd.E2EPageInternal, selector: string) {
+  constructor(private _page: pd.E2EPageInternal, private _elmHandle: puppeteer.ElementHandle) {
     super(null, null);
-    page._elements.push(this);
-
-    const splt = selector.split('>>>');
-
-    this.lightSelector = splt[0].trim();
-    this.shadowSelector = (splt.length > 1 ? splt[1].trim() : null);
   }
 
-  async getProperty(propertyName: string) {
-    if (this.queuedActions.length) {
-      throw new Error(`await page.waitForChanges() must be called before element.getProperty()`);
-    }
-
-    const propValue = await this.page.$eval(this.lightSelector, (elm: any, propertyName: string) => {
-      return elm[propertyName];
-    }, propertyName);
-
-    return propValue;
-  }
-
-  setProperty(propertyName: string, value: any) {
-    this.queuedActions.push({
-      setPropertyName: propertyName,
-      setPropertyValue: value
-    });
+  find(selector: string) {
+    return find(this._page, this._elmHandle, selector);
   }
 
   callMethod(methodName: string, ...methodArgs: any[]) {
-    this.queuedActions.push({
+    this._queuedActions.push({
       methodName: methodName,
       methodArgs: methodArgs
     });
@@ -50,7 +29,7 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
   }
 
   triggerEvent(eventName: string, eventInitDict?: d.EventInitDict) {
-    this.queuedActions.push({
+    this._queuedActions.push({
       eventName: eventName,
       eventInitDict: eventInitDict
     });
@@ -59,7 +38,7 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
   async spyOnEvent(eventName: string) {
     const eventSpy = new EventSpy(eventName);
 
-    await addE2EListener(this.page, this.lightSelector, eventName, (ev: d.SerializedEvent) => {
+    await addE2EListener(this._page, this._elmHandle, eventName, (ev: d.SerializedEvent) => {
       eventSpy.events.push(ev);
     });
 
@@ -67,72 +46,180 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
   }
 
   async click(options?: puppeteer.ClickOptions) {
-    const handle = await this.e2eHandle();
-    return handle.click(options);
+    return this._elmHandle.click(options);
   }
 
   async focus() {
-    const handle = await this.e2eHandle();
-    return handle.focus();
+    return this._elmHandle.focus();
   }
 
   async hover() {
-    const handle = await this.e2eHandle();
-    return handle.hover();
+    return this._elmHandle.hover();
   }
 
   async isIntersectingViewport() {
-    const handle = await this.e2eHandle();
-    return handle.isIntersectingViewport();
+    return this._elmHandle.isIntersectingViewport();
   }
 
   async press(key: string, options?: { text?: string, delay?: number }) {
-    const handle = await this.e2eHandle();
-    return handle.press(key, options);
+    return this._elmHandle.press(key, options);
   }
 
   async tap() {
-    const handle = await this.e2eHandle();
-    return handle.tap();
+    return this._elmHandle.tap();
   }
 
   async type(text: string, options?: { delay: number }) {
-    const handle = await this.e2eHandle();
-    return handle.type(text, options);
+    return this._elmHandle.type(text, options);
   }
 
-  private _e2eHandle: puppeteer.ElementHandle;
-  private async e2eHandle() {
-    if (!this._e2eHandle) {
-      this._e2eHandle = await this.page.$(this.lightSelector);
-    }
-    return this._e2eHandle;
+  async getProperty(propertyName: string) {
+    this._validate();
+
+    const executionContext = this._elmHandle.executionContext();
+
+    const propValue = await executionContext.evaluate((elm: any, propertyName: string) => {
+      return elm[propertyName];
+    }, this._elmHandle, propertyName);
+
+    return propValue;
+  }
+
+  setProperty(propertyName: string, value: any) {
+    this._queuedActions.push({
+      setPropertyName: propertyName,
+      setPropertyValue: value
+    });
+  }
+
+  getAttribute(name: string) {
+    this._validate();
+    return super.getAttribute(name);
+  }
+
+  setAttribute(name: string, value: any) {
+    this._queuedActions.push({
+      setAttributeName: name,
+      setAttributeValue: value
+    });
+  }
+
+  get classList() {
+    const api: any = {
+      add: (...classNames: string[]) => {
+        classNames.forEach(className => {
+          this._queuedActions.push({
+            classAdd: className
+          });
+        });
+      },
+      remove: (...classNames: string[]) => {
+        classNames.forEach(className => {
+          this._queuedActions.push({
+            classRemove: className
+          });
+        });
+      },
+      toggle: (className: string) => {
+        this._queuedActions.push({
+          classToggle: className
+        });
+      },
+      contains: (className: string) => {
+        this._validate();
+        return this.className.split(' ').includes(className);
+      }
+    };
+    return api;
+  }
+
+  get id() {
+    this._validate();
+    return super.id;
+  }
+
+  set id(value: string) {
+    this._queuedActions.push({
+      setPropertyName: 'id',
+      setPropertyValue: value
+    });
+  }
+
+  get innerHTML() {
+    this._validate();
+    return super.innerHTML;
+  }
+
+  set innerHTML(value: string) {
+    this._queuedActions.push({
+      setPropertyName: 'innerHTML',
+      setPropertyValue: value
+    });
+  }
+
+  get innerText() {
+    this._validate();
+    return super.innerText;
+  }
+
+  set innerText(value: string) {
+    this._queuedActions.push({
+      setPropertyName: 'innerText',
+      setPropertyValue: value
+    });
+  }
+
+  get nodeValue() {
+    this._validate();
+    return super.nodeValue;
+  }
+
+  set nodeValue(value: string) {
+    this._queuedActions.push({
+      setPropertyName: 'nodeValue',
+      setPropertyValue: value
+    });
+  }
+
+  get outerHTML() {
+    this._validate();
+    return super.outerHTML;
+  }
+
+  set outerHTML(_value: string) {
+    throw new Error(`outerHTML is read only`);
+  }
+
+  private _shadowRoot: MockDocumentFragment = null;
+  get shadowRoot() {
+    this._validate();
+    return this._shadowRoot;
+  }
+
+  set shadowRoot(_value: any) {
+    throw new Error(`shadowRoot is read only`);
+  }
+
+  get textContent() {
+    this._validate();
+    return super.textContent;
+  }
+
+  set textContent(value: string) {
+    this._queuedActions.push({
+      setPropertyName: 'textContent',
+      setPropertyValue: value
+    });
   }
 
   async e2eRunActions() {
-    if (this.queuedActions.length === 0) {
+    if (this._queuedActions.length === 0) {
       return;
     }
 
-    const rtn = await this.page.$eval(this.lightSelector, (elm: HTMLElement, shadowSelector, queuedActions) => {
-      // BROWSER CONTEXT
-      let foundElm: HTMLElement;
+    const executionContext = this._elmHandle.executionContext();
 
-      if (shadowSelector) {
-        if (!elm.shadowRoot) {
-          throw new Error(`shadow root not found for: ${elm.tagName.toLowerCase()}`);
-        }
-
-        foundElm = elm.shadowRoot.querySelector(shadowSelector);
-
-        if (!foundElm) {
-          throw new Error(`selector "${this.shadowSelector}" not found in shadow root of ${elm.tagName.toLowerCase()}`);
-        }
-
-      } else {
-        foundElm = elm;
-      }
-
+    const rtn = await executionContext.evaluate((elm: HTMLElement, queuedActions: ElementAction[]) => {
       // BROWSER CONTEXT
       // cannot use async/await in here cuz typescript transpiles it in the node context
       return (elm as any).componentOnReady().then(() => {
@@ -143,7 +230,19 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
             rtn = (elm as any)[queuedAction.methodName].apply(elm, queuedAction.methodArgs);
 
           } else if (queuedAction.setPropertyName) {
-            (foundElm as any)[queuedAction.setPropertyName] = queuedAction.setPropertyValue;
+            (elm as any)[queuedAction.setPropertyName] = queuedAction.setPropertyValue;
+
+          } else if (queuedAction.setAttributeName) {
+            elm.setAttribute(queuedAction.setAttributeName, queuedAction.setAttributeValue);
+
+          } else if (queuedAction.classAdd) {
+            elm.classList.add(queuedAction.classAdd);
+
+          } else if (queuedAction.classRemove) {
+            elm.classList.remove(queuedAction.classRemove);
+
+          } else if (queuedAction.classToggle) {
+            elm.classList.toggle(queuedAction.classToggle);
 
           } else if (queuedAction.eventName) {
             const eventInitDict = queuedAction.eventInitDict || {};
@@ -161,7 +260,7 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
             }
 
             const ev = new CustomEvent(queuedAction.eventName, eventInitDict);
-            foundElm.dispatchEvent(ev);
+            elm.dispatchEvent(ev);
           }
         });
 
@@ -174,36 +273,30 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
         return rtn;
       });
 
-    }, this.shadowSelector, this.queuedActions);
+    }, this._elmHandle, this._queuedActions);
 
-    this.queuedActions.length = 0;
+    this._queuedActions.length = 0;
 
     return rtn;
   }
 
   async e2eSync() {
-    const outerHTML = await this.page.$eval(this.lightSelector, (elm: HTMLElement, shadowSelector) => {
+    const executionContext = this._elmHandle.executionContext();
 
-      let foundElm: HTMLElement;
+    const { outerHTML, shadowRootHTML } = await executionContext.evaluate((elm: HTMLElement) => {
+      return {
+        outerHTML: elm.outerHTML,
+        shadowRootHTML: elm.shadowRoot ? elm.shadowRoot.innerHTML : null
+      };
+    }, this._elmHandle);
 
-      if (shadowSelector) {
-        if (!elm.shadowRoot) {
-          throw new Error(`shadow root not found for: ${elm.tagName.toLowerCase()}`);
-        }
+    if (shadowRootHTML) {
+      this._shadowRoot = parseFragment(shadowRootHTML);
+      (this._shadowRoot as any).host = this;
 
-        foundElm = elm.shadowRoot.querySelector(shadowSelector);
-
-        if (!foundElm) {
-          throw new Error(`selector "${this.shadowSelector}" not found in shadow root of ${elm.tagName.toLowerCase()}`);
-        }
-
-      } else {
-        foundElm = elm;
-      }
-
-      return foundElm.outerHTML;
-
-    }, this.shadowSelector, this.queuedActions);
+    } else {
+      this._shadowRoot = null;
+    }
 
     const frag = parseFragment(outerHTML);
 
@@ -216,42 +309,44 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
       this.removeChild(this.childNodes[i]);
     }
 
-    for (let i = 0; i < rootElm.childNodes.length; i++) {
-      this.appendChild(rootElm.childNodes[i]);
+    while (rootElm.childNodes.length > 0) {
+      this.appendChild(rootElm.childNodes[0]);
+    }
+  }
+
+  private _validate() {
+    if (this._queuedActions.length > 0) {
+      throw new Error(`await page.waitForChanges() must be called before reading element information`);
     }
   }
 
   async e2eDispose() {
-    if (this._e2eHandle) {
-      await this._e2eHandle.dispose();
-      this._e2eHandle = null;
+    if (this._elmHandle) {
+      await this._elmHandle.dispose();
+      this._elmHandle = null;
     }
 
-    const index = this.page._elements.indexOf(this);
+    const index = this._page._elements.indexOf(this);
     if (index > -1) {
-      this.page._elements.splice(index, 1);
+      this._page._elements.splice(index, 1);
     }
 
-    this.page = null;
+    this._page = null;
   }
 
 }
 
 
-export async function findE2EElement(page: pd.E2EPageInternal, selector: string) {
-  const elm = new E2EElement(page, selector);
-
-  await elm.e2eSync();
-
-  return elm;
-}
-
-
-interface ElementActions {
+interface ElementAction {
+  classAdd?: string;
+  classRemove?: string;
+  classToggle?: string;
   eventName?: string;
   eventInitDict?: d.EventInitDict;
   methodName?: string;
   methodArgs?: any[];
+  setAttributeName?: string;
+  setAttributeValue?: any;
   setPropertyName?: string;
   setPropertyValue?: any;
 }

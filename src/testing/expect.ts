@@ -2,30 +2,49 @@ import * as d from '../declarations';
 import { parseFragment } from './parse-html';
 import { serialize } from './mock-doc/serialize-node';
 import deepEqual from 'fast-deep-equal';
+import { NODE_TYPES } from './mock-doc/constants';
 
 
-export function toEqualHtml(input: string | HTMLElement, shouldEqual: string) {
+export function toEqualHtml(input: string | HTMLElement | ShadowRoot, shouldEqual: string) {
   if (input == null) {
     throw new Error(`expect toEqualHtml value is null`);
   }
 
   let serializeA: string;
 
-  if ((input as HTMLElement).nodeName) {
-    serializeA = (input as HTMLElement).innerHTML;
+  if ((input as HTMLElement).nodeType === NODE_TYPES.ELEMENT_NODE) {
+    serializeA = serialize((input as any), {
+      format: 'html',
+      pretty: true,
+      excludeRoot: false
+    });
+
+  } else if ((input as HTMLElement).nodeType === NODE_TYPES.DOCUMENT_FRAGMENT_NODE) {
+    serializeA = serialize((input as any), {
+      format: 'html',
+      pretty: true,
+      excludeRoot: true,
+      excludeTags: ['style'],
+      excludeTagContent: ['style']
+    });
+
+  } else if (typeof input === 'string') {
+    const parseA = parseFragment(input);
+    serializeA = serialize(parseA, {
+      format: 'html',
+      pretty: true,
+      excludeRoot: true
+    });
 
   } else {
-    const parseA = parseFragment(input as string);
-
-    serializeA = serialize(parseA, {
-      format: 'html'
-    });
+    throw new Error(`expect toEqualHtml value should be an element, shadow root or string`);
   }
 
   const parseB = parseFragment(shouldEqual);
 
   const serializeB = serialize(parseB, {
-    format: 'html'
+    format: 'html',
+    pretty: true
   });
 
   if (serializeA !== serializeB) {
@@ -42,26 +61,32 @@ export function toEqualHtml(input: string | HTMLElement, shouldEqual: string) {
   };
 }
 
-export function toEqualText(elm: HTMLElement, expectTextContent: string) {
-  if (!elm) {
+export function toEqualText(input: HTMLElement | string, expectTextContent: string) {
+  if (!input) {
     throw new Error(`expect toEqualText value is null`);
   }
 
-  if (typeof (elm as any).then === 'function') {
+  if (typeof (input as any).then === 'function') {
     throw new Error(`element must be a resolved value, not a promise, before it can be tested`);
   }
 
-  if (elm.nodeType !== 1) {
-    throw new Error(`expect toEqualText value is not an element`);
+  let textContent: string;
+
+  if ((input as HTMLElement).nodeType === NODE_TYPES.ELEMENT_NODE) {
+    textContent = (input as HTMLElement).textContent.replace(/\s\s+/g, ' ').trim();
+
+  } else if (input != null) {
+    textContent = String(input).replace(/\s\s+/g, ' ').trim();
   }
 
-  const elmTextContent = (elm.textContent || '').trim();
-  expectTextContent = (expectTextContent || '').trim();
+  if (typeof expectTextContent === 'string') {
+    expectTextContent = expectTextContent.replace(/\s\s+/g, ' ').trim();
+  }
 
-  const pass = (elmTextContent === expectTextContent);
+  const pass = (textContent === expectTextContent);
 
   return {
-    message: () => `expected textContent "${expectTextContent}" to ${pass ? 'not ' : ''}equal "${elmTextContent}"`,
+    message: () => `expected textContent "${expectTextContent}" to ${pass ? 'not ' : ''}equal "${textContent}"`,
     pass: pass,
   };
 }
@@ -75,7 +100,7 @@ export function toHaveAttribute(elm: HTMLElement, expectAttrName: string) {
     throw new Error(`element must be a resolved value, not a promise, before it can be tested`);
   }
 
-  if (elm.nodeType !== 1) {
+  if (elm.nodeType !== NODE_TYPES.ELEMENT_NODE) {
     throw new Error(`expect toHaveAttribute value is not an element`);
   }
 
@@ -96,11 +121,19 @@ export function toEqualAttribute(elm: HTMLElement, expectAttrName: string, expec
     throw new Error(`element must be a resolved value, not a promise, before it can be tested`);
   }
 
-  if (elm.nodeType !== 1) {
+  if (elm.nodeType !== NODE_TYPES.ELEMENT_NODE) {
     throw new Error(`expect toMatchAttribute value is not an element`);
   }
 
-  const receivedAttrValue = elm.getAttribute(expectAttrName);
+  let receivedAttrValue = elm.getAttribute(expectAttrName);
+
+  if (expectAttrValue != null) {
+    expectAttrValue = String(expectAttrValue);
+  }
+
+  if (receivedAttrValue != null) {
+    receivedAttrValue = String(receivedAttrValue);
+  }
 
   const pass = (expectAttrValue === receivedAttrValue);
 
@@ -119,7 +152,7 @@ export function toEqualAttributes(elm: HTMLElement, expectAttrs: {[attrName: str
     throw new Error(`element must be a resolved value, not a promise, before it can be tested`);
   }
 
-  if (elm.nodeType !== 1) {
+  if (elm.nodeType !== NODE_TYPES.ELEMENT_NODE) {
     throw new Error(`expect toEqualAttributes value is not an element`);
   }
 
