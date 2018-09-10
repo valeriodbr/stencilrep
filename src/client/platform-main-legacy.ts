@@ -2,7 +2,7 @@ import * as d from '../declarations';
 import { attachStyles } from '../core/styles';
 import { createDomApi } from '../renderer/dom-api';
 import { createRendererPatch } from '../renderer/vdom/patch';
-import { createVNodesFromSsr } from '../renderer/vdom/ssr';
+import { createVNodesFromPrerenderedNodes } from '../renderer/vdom/prerender';
 import { createQueueClient } from './queue-client';
 import { CustomStyle } from './polyfills/css-shim/custom-style';
 import { enableEventListener } from '../core/listeners';
@@ -105,10 +105,11 @@ export function createPlatformMainLegacy(namespace: string, Context: d.CoreConte
     domApi.$dispatchEvent(win, 'appload', { detail: { namespace: namespace } });
   };
 
-  // if the HTML was generated from SSR
-  // then let's walk the tree and generate vnodes out of the data
-  createVNodesFromSsr(plt, domApi, rootElm);
-
+  if (__BUILD_CONDITIONALS__.prerenderClientSide) {
+    // if this HTML was generated from prerendered nodes
+    // then let's walk the tree and generate vnodes out of the data
+    createVNodesFromPrerenderedNodes(plt, domApi, rootElm);
+  }
 
   function defineComponent(cmpMeta: d.ComponentMeta, HostElementConstructor: any) {
 

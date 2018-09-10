@@ -17,8 +17,12 @@ export interface BuildConditionals {
   hotModuleReplacement: boolean;
   verboseError: boolean;
 
-  // ssr
+  // ssr (TODO! REMOVE)
   ssrServerSide: boolean;
+
+  // prerender
+  prerenderServerSide: boolean;
+  prerenderClientSide: boolean;
 
   // encapsulation
   styles: boolean;

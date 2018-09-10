@@ -2,7 +2,7 @@ import * as d from '../declarations';
 import { attachStyles } from '../core/styles';
 import { createDomApi } from '../renderer/dom-api';
 import { createRendererPatch } from '../renderer/vdom/patch';
-import { createVNodesFromSsr } from '../renderer/vdom/ssr';
+import { createVNodesFromPrerenderedNodes } from '../renderer/vdom/prerender';
 import { createQueueClient } from './queue-client';
 import { dashToPascalCase } from '../util/helpers';
 import { enableEventListener } from '../core/listeners';
@@ -98,10 +98,10 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
     domApi.$dispatchEvent(win, 'appload', { detail: { namespace: namespace } });
   };
 
-  if (__BUILD_CONDITIONALS__.browserModuleLoader) {
-    // if the HTML was generated from SSR
+  if (__BUILD_CONDITIONALS__.prerenderClientSide) {
+    // if this HTML was generated from prerendered nodes
     // then let's walk the tree and generate vnodes out of the data
-    createVNodesFromSsr(plt, domApi, rootElm);
+    createVNodesFromPrerenderedNodes(plt, domApi, rootElm);
   }
 
   function defineComponent(cmpMeta: d.ComponentMeta, HostElementConstructor: any) {

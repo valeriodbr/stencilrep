@@ -1,13 +1,13 @@
 import * as d from '../../declarations';
-import { NODE_TYPE, SSR_CHILD_ID, SSR_VNODE_ID } from '../../util/constants';
+import { NODE_TYPE, PRERENDER_CHILD_ID, PRERENDER_VNODE_ID } from '../../util/constants';
 
 
-export function createVNodesFromSsr(plt: d.PlatformApi, domApi: d.DomApi, rootElm: Element) {
-  const allSsrElms: d.HostElement[] = <any>rootElm.querySelectorAll(`[${SSR_VNODE_ID}]`);
-  const ilen = allSsrElms.length;
+export function createVNodesFromPrerenderedNodes(plt: d.PlatformApi, domApi: d.DomApi, rootElm: Element) {
+  const allprElms: d.HostElement[] = <any>rootElm.querySelectorAll(`[${PRERENDER_VNODE_ID}]`);
+  const ilen = allprElms.length;
   let elm: d.HostElement,
-      ssrVNodeId: string,
-      ssrVNode: d.VNode,
+      prVNodeId: string,
+      prVNode: d.VNode,
       i: number,
       j: number,
       jlen: number;
@@ -16,21 +16,21 @@ export function createVNodesFromSsr(plt: d.PlatformApi, domApi: d.DomApi, rootEl
     plt.hasLoadedMap.set(rootElm as d.HostElement, true);
 
     for (i = 0; i < ilen; i++) {
-      elm = allSsrElms[i];
-      ssrVNodeId = domApi.$getAttribute(elm, SSR_VNODE_ID);
-      ssrVNode = {};
-      ssrVNode.vtag = domApi.$tagName(ssrVNode.elm = elm);
-      plt.vnodeMap.set(elm, ssrVNode);
+      elm = allprElms[i];
+      prVNodeId = domApi.$getAttribute(elm, PRERENDER_VNODE_ID);
+      prVNode = {};
+      prVNode.vtag = domApi.$tagName(prVNode.elm = elm);
+      plt.vnodeMap.set(elm, prVNode);
 
       for (j = 0, jlen = elm.childNodes.length; j < jlen; j++) {
-        addChildSsrVNodes(domApi, elm.childNodes[j] as d.RenderNode, ssrVNode, ssrVNodeId, true);
+        addChildPrerenderedVNodes(domApi, elm.childNodes[j] as d.RenderNode, prVNode, prVNodeId, true);
       }
     }
   }
 }
 
 
-function addChildSsrVNodes(domApi: d.DomApi, node: d.RenderNode, parentVNode: d.VNode, ssrVNodeId: string, checkNestedElements: boolean) {
+function addChildPrerenderedVNodes(domApi: d.DomApi, node: d.RenderNode, parentVNode: d.VNode, prVNodeId: string, checkNestedElements: boolean) {
   const nodeType = domApi.$nodeType(node);
   let previousComment: Comment;
   let childVNodeId: string,
@@ -38,14 +38,14 @@ function addChildSsrVNodes(domApi: d.DomApi, node: d.RenderNode, parentVNode: d.
       childVNode: d.VNode;
 
   if (checkNestedElements && nodeType === NODE_TYPE.ElementNode) {
-    childVNodeId = domApi.$getAttribute(node, SSR_CHILD_ID);
+    childVNodeId = domApi.$getAttribute(node, PRERENDER_CHILD_ID);
 
     if (childVNodeId) {
       // split the start comment's data with a period
       childVNodeSplt = childVNodeId.split('.');
 
-      // ensure this this element is a child element of the ssr vnode
-      if (childVNodeSplt[0] === ssrVNodeId) {
+      // ensure this this element is a child element of the pr vnode
+      if (childVNodeSplt[0] === prVNodeId) {
         // cool, this element is a child to the parent vnode
         childVNode = {};
         childVNode.vtag = domApi.$tagName(childVNode.elm = node);
@@ -71,7 +71,7 @@ function addChildSsrVNodes(domApi: d.DomApi, node: d.RenderNode, parentVNode: d.
 
     // keep drilling down through the elements
     for (let i = 0; i < node.childNodes.length; i++) {
-      addChildSsrVNodes(domApi, <any>node.childNodes[i], parentVNode, ssrVNodeId, checkNestedElements);
+      addChildPrerenderedVNodes(domApi, <any>node.childNodes[i], parentVNode, prVNodeId, checkNestedElements);
     }
 
   } else if (nodeType === NODE_TYPE.TextNode &&
@@ -81,9 +81,9 @@ function addChildSsrVNodes(domApi: d.DomApi, node: d.RenderNode, parentVNode: d.
     // split the start comment's data with a period
     childVNodeSplt = domApi.$getTextContent(previousComment).split('.');
 
-    // ensure this is an ssr text node start comment
+    // ensure this is an pr text node start comment
     // which should start with an "s" and delimited by periods
-    if (childVNodeSplt[0] === 's' && childVNodeSplt[1] === ssrVNodeId) {
+    if (childVNodeSplt[0] === 's' && childVNodeSplt[1] === prVNodeId) {
       // cool, this is a text node and it's got a start comment
       childVNode = { vtext: domApi.$getTextContent(node) } as d.VNode;
       childVNode.elm = node;

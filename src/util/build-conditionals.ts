@@ -11,6 +11,8 @@ export function getDefaultBuildConditionals(): d.BuildConditionals {
     shadowDom: true,
     slotPolyfill: true,
     ssrServerSide: true,
+    prerenderClientSide: false,
+    prerenderServerSide: false,
     devInspector: true,
     hotModuleReplacement: true,
     verboseError: true,
@@ -71,12 +73,15 @@ export async function setBuildConditionals(
     hotModuleReplacement: config.devMode,
     verboseError: config.devMode,
 
+    ssrServerSide: false,
+    prerenderClientSide: false,
+    prerenderServerSide: false,
+
     externalModuleLoader: false,
     browserModuleLoader: false,
     polyfills: false,
     es5: false,
     cssVarShim: false,
-    ssrServerSide: false,
     shadowDom: false,
     slotPolyfill: false,
     event: false,
@@ -112,16 +117,14 @@ export async function setBuildConditionals(
 
   if (coreId === 'core') {
     coreBuild.browserModuleLoader = true;
-    coreBuild.slotPolyfill = !!coreBuild.slotPolyfill;
-    if (coreBuild.slotPolyfill) {
-      coreBuild.slotPolyfill = !!(buildCtx.hasSlot);
-    }
+    coreBuild.slotPolyfill = false;
     compilerCtx.lastBuildConditionalsBrowserEsm = coreBuild;
 
   } else if (coreId === 'core.ssr') {
     coreBuild.browserModuleLoader = true;
     coreBuild.slotPolyfill = true;
-    coreBuild.ssrServerSide = true;
+    coreBuild.prerenderServerSide = true;
+    coreBuild.prerenderClientSide = false;
     compilerCtx.lastBuildConditionalsBrowserSsr = coreBuild;
 
   } else if (coreId === 'core.pf') {
@@ -129,7 +132,7 @@ export async function setBuildConditionals(
     coreBuild.es5 = true;
     coreBuild.polyfills = true;
     coreBuild.cssVarShim = true;
-    coreBuild.slotPolyfill = !!(buildCtx.hasSlot);
+    coreBuild.slotPolyfill = true;
     compilerCtx.lastBuildConditionalsBrowserEs5 = coreBuild;
 
   } else if (coreId === 'esm.es5') {
@@ -139,9 +142,6 @@ export async function setBuildConditionals(
     coreBuild.slotPolyfill = true;
     compilerCtx.lastBuildConditionalsEsmEs5 = coreBuild;
   }
-
-  coreBuild.slotPolyfill = true;
-  coreBuild.hasSvg = true;
 
   return coreBuild;
 }

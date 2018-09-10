@@ -68,10 +68,10 @@ export const enum NODE_TYPE {
 
 
 /**
- * SSR Attribute Names
+ * Prerender Attribute Names
  */
-export const SSR_VNODE_ID = 'ssrv';
-export const SSR_CHILD_ID = 'ssrc';
+export const PRERENDER_VNODE_ID = 'data-p';
+export const PRERENDER_CHILD_ID = 'data-pc';
 
 
 /**

@@ -8,7 +8,7 @@
  */
 import * as d from '../../declarations';
 import { isDef } from '../../util/helpers';
-import { NODE_TYPE, SSR_CHILD_ID, SSR_VNODE_ID } from '../../util/constants';
+import { NODE_TYPE, PRERENDER_CHILD_ID, PRERENDER_VNODE_ID } from '../../util/constants';
 import { updateElement } from './update-dom-node';
 
 let isSvgMode = false;
@@ -75,15 +75,15 @@ export function createRendererPatch(plt: d.PlatformApi, domApi: d.DomApi): d.Ren
         domApi.$addClass(elm, (elm['s-si'] = scopeId));
       }
 
-      if (__BUILD_CONDITIONALS__.ssrServerSide && isDef(ssrId)) {
-        // SSR ONLY: this is an SSR render and this
-        // logic does not run on the client
+      if (__BUILD_CONDITIONALS__.prerenderServerSide && isDef(prerenderId)) {
+        // PRERENDERING ONLY: this logic only runs while building
+        // elements to include prerendering attributes
 
-        // give this element the SSR child id that can be read by the client
+        // give this element the prerender child id that can be read by the client
         domApi.$setAttribute(
           elm,
-          SSR_CHILD_ID,
-          ssrId + '.' + childIndex + (hasChildNodes(newVNode.vchildren) ? '' : '.')
+          PRERENDER_CHILD_ID,
+          prerenderId + '.' + childIndex + (hasChildNodes(newVNode.vchildren) ? '' : '.')
         );
       }
 
@@ -94,16 +94,18 @@ export function createRendererPatch(plt: d.PlatformApi, domApi: d.DomApi): d.Ren
 
           // return node could have been null
           if (childNode) {
-            if (__BUILD_CONDITIONALS__.ssrServerSide && isDef(ssrId) && childNode.nodeType === NODE_TYPE.TextNode && !childNode['s-cr']) {
-              // SSR ONLY: add the text node's start comment
-              domApi.$appendChild(elm, domApi.$createComment('s.' + ssrId + '.' + i));
+            if (__BUILD_CONDITIONALS__.prerenderServerSide && isDef(prerenderId) && childNode.nodeType === NODE_TYPE.TextNode && !childNode['s-cr']) {
+              // PRERENDER ONLY: add an html comment BEFORE this text node
+              // which is useful when the client recreates the vnode
+              domApi.$appendChild(elm, domApi.$createComment('s.' + prerenderId + '.' + i));
             }
 
             // append our new node
             domApi.$appendChild(elm, childNode);
 
-            if (__BUILD_CONDITIONALS__.ssrServerSide && isDef(ssrId) && childNode.nodeType === NODE_TYPE.TextNode && !childNode['s-cr']) {
-              // SSR ONLY: add the text node's end comment
+            if (__BUILD_CONDITIONALS__.prerenderServerSide && isDef(prerenderId) && childNode.nodeType === NODE_TYPE.TextNode && !childNode['s-cr']) {
+              // PRERENDER ONLY: add an html comment AFTER this text node
+              // which is useful when the client recreates the vnode
               domApi.$appendChild(elm, domApi.$createComment('/'));
               domApi.$appendChild(elm, domApi.$createTextNode(' '));
             }
@@ -553,7 +555,7 @@ export function createRendererPatch(plt: d.PlatformApi, domApi: d.DomApi): d.Ren
 
   // internal variables to be reused per patch() call
   let useNativeShadowDom: boolean,
-      ssrId: number,
+      prerenderId: number,
       scopeId: string,
       checkSlotFallbackVisibility: boolean,
       checkSlotRelocate: boolean,
@@ -561,7 +563,7 @@ export function createRendererPatch(plt: d.PlatformApi, domApi: d.DomApi): d.Ren
       contentRef: d.RenderNode;
 
 
-  return function patch(hostElm: d.HostElement, oldVNode: d.VNode, newVNode: d.VNode, useNativeShadowDomVal: boolean, encapsulation: d.Encapsulation, ssrPatchId?: number, i?: number, relocateNode?: RelocateNode, orgLocationNode?: d.RenderNode, refNode?: d.RenderNode, parentNodeRef?: Node, insertBeforeNode?: Node) {
+  return function patch(hostElm: d.HostElement, oldVNode: d.VNode, newVNode: d.VNode, useNativeShadowDomVal: boolean, encapsulation: d.Encapsulation, prerenderPatchId?: number, i?: number, relocateNode?: RelocateNode, orgLocationNode?: d.RenderNode, refNode?: d.RenderNode, parentNodeRef?: Node, insertBeforeNode?: Node) {
     // patchVNode() is synchronous
     // so it is safe to set these variables and internally
     // the same patch() call will reference the same data
@@ -569,11 +571,11 @@ export function createRendererPatch(plt: d.PlatformApi, domApi: d.DomApi): d.Ren
     contentRef = hostElm['s-cr'];
     useNativeShadowDom = useNativeShadowDomVal;
 
-    if (__BUILD_CONDITIONALS__.ssrServerSide) {
+    if (__BUILD_CONDITIONALS__.prerenderServerSide) {
       if (encapsulation !== 'shadow') {
-        ssrId = ssrPatchId;
+        prerenderId = prerenderPatchId;
       } else {
-        ssrId = null;
+        prerenderId = null;
       }
     }
 
@@ -588,10 +590,10 @@ export function createRendererPatch(plt: d.PlatformApi, domApi: d.DomApi): d.Ren
     // synchronous patch
     patchVNode(oldVNode, newVNode);
 
-    if (__BUILD_CONDITIONALS__.ssrServerSide && isDef(ssrId)) {
-      // SSR ONLY: we've been given an SSR id, so the host element
-      // should be given the ssr id attribute
-      domApi.$setAttribute(oldVNode.elm, SSR_VNODE_ID, ssrId);
+    if (__BUILD_CONDITIONALS__.prerenderServerSide && isDef(prerenderId)) {
+      // PRERENDER ONLY: we're prerendering the node, so let's add the prerender attribute
+      // which is useful when the client recreates the vnode from this prerender data
+      domApi.$setAttribute(oldVNode.elm, PRERENDER_VNODE_ID, prerenderId);
     }
 
     if (__BUILD_CONDITIONALS__.slotPolyfill) {
@@ -691,7 +693,7 @@ export function callNodeRefs(vNode: d.VNode, isDestroy?: boolean) {
 
 
 function hasChildNodes(children: d.VNode[]) {
-  // SSR ONLY: check if there are any more nested child elements
+  // PRERENDER ONLY: check if there are any more nested child elements
   // if there aren't, this info is useful so the client runtime
   // doesn't have to climb down and check so many elements
   if (children) {
