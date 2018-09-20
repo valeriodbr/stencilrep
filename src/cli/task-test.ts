@@ -5,7 +5,14 @@ export async function taskTest(config: d.Config) {
   await config.sys.lazyRequire.ensure(
     config.logger,
     config.rootDir,
-    ['@types/jest', 'jest', 'jest-environment-node', 'puppeteer']
+    [
+      '@types/jest',
+      '@types/puppeteer',
+      'jest',
+      'jest-environment-node',
+      'pixelmatch',
+      'puppeteer'
+    ]
   );
 
   const { Testing } = require('../testing/index.js');
@@ -15,7 +22,12 @@ export async function taskTest(config: d.Config) {
     process.exit(1);
   }
 
-  await testing.runTests();
-
+  const passed = await testing.runTests();
   await testing.destroy();
+
+  if (passed) {
+    process.exit(0);
+  } else {
+    process.exit(1);
+  }
 }

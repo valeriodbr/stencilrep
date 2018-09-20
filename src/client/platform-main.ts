@@ -42,8 +42,7 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
   App.Context = Context;
 
   // keep a global set of tags we've already defined
-  // DEPRECATED $definedCmps 2018-05-22
-  const globalDefined: {[tag: string]: boolean} = win['s-defined'] = (win as any)['$definedCmps'] = (win['s-defined'] || (win as any)['$definedCmps'] || {});
+  const globalDefined: {[tag: string]: boolean} = win['s-defined'] = (win['s-defined'] || {});
 
   // internal id increment for unique ids
   let ids = 0;
@@ -71,7 +70,8 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
     componentAppliedStyles: new WeakMap(),
     hasConnectedMap: new WeakMap(),
     hasListenersMap: new WeakMap(),
-    hasLoadedMap: new WeakMap(),
+    isCmpLoaded: new WeakMap(),
+    isCmpReady: new WeakMap(),
     hostElementMap: new WeakMap(),
     hostSnapshotMap: new WeakMap(),
     instanceMap: new WeakMap(),
@@ -80,8 +80,16 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
     onReadyCallbacksMap: new WeakMap(),
     queuedEvents: new WeakMap(),
     vnodeMap: new WeakMap(),
-    valuesMap: new WeakMap()
+    valuesMap: new WeakMap(),
+
+    processingCmp: new Set(),
+    onAppReadyCallbacks: []
   };
+
+  // create a method that returns a promise
+  // which gets resolved when the app's queue is empty
+  // and app is idle, works for both initial load and updates
+  App.onReady = () => new Promise(resolve => plt.queue.write(() => plt.processingCmp.size ? plt.onAppReadyCallbacks.push(resolve) : resolve()));
 
   // create the renderer that will be used
   plt.render = createRendererPatch(plt, domApi);
@@ -94,7 +102,7 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
 
   // this will fire when all components have finished loaded
   rootElm['s-init'] = () => {
-    plt.hasLoadedMap.set(rootElm, App.loaded = plt.isAppLoaded = true);
+    plt.isCmpReady.set(rootElm, App.loaded = plt.isAppLoaded = true);
     domApi.$dispatchEvent(win, 'appload', { detail: { namespace: namespace } });
   };
 
@@ -192,7 +200,7 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
         : (cmpMeta.bundleIds as d.BundleIds)[elm.mode];
 
       const useScopedCss = __BUILD_CONDITIONALS__.shadowDom && !domApi.$supportsShadowDom;
-      let url = resourcesUrl + bundleId + (useScopedCss ? '.sc' : '') + '.js';
+      let url = resourcesUrl + bundleId + (useScopedCss ? '.sc' : '') + '.entry.js';
 
       if (__BUILD_CONDITIONALS__.hotModuleReplacement && hmrVersionId) {
         url += '?s-hmr=' + hmrVersionId;

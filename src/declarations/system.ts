@@ -12,6 +12,7 @@ export interface StencilSystem {
     packageDir?: string;
   };
   copy?(copyTasks: d.CopyTask[]): Promise<d.CopyResults>;
+  color?: any;
   createFsWatcher?(events: d.BuildEvents, paths: string, opts?: any): d.FsWatcher;
   destroy?(): void;
   addDestroy?(fn: Function): void;
@@ -51,7 +52,7 @@ export interface StencilSystem {
   scopeCss?: (cssText: string, scopeId: string, hostScopeId: string, slotScopeId: string) => Promise<string>;
   semver?: Semver;
   storage?: Storage;
-  transpileToEs5?(cwd: string, input: string): Promise<d.TranspileResults>;
+  transpileToEs5?(cwd: string, input: string, inlineHelpers: boolean): Promise<d.TranspileResults>;
   url?: {
     parse(urlStr: string, parseQueryString?: boolean, slashesDenoteHost?: boolean): Url;
     format(url: Url): string;
@@ -78,7 +79,8 @@ export interface Semver {
   lt: (a: string, b: string, loose?: boolean) => boolean;
   lte: (a: string, b: string, loose?: boolean) => boolean;
   satisfies: (version: string, range: string) => boolean;
-}
+  prerelease: (version: string) => string[] | null;
+ }
 
 
 export interface SystemDetails {

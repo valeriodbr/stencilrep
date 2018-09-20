@@ -95,6 +95,9 @@ export namespace Components {
   }
   interface DynamicImportAttributes extends StencilHTMLAttributes {}
 
+  interface Es5AddclassSvg {}
+  interface Es5AddclassSvgAttributes extends StencilHTMLAttributes {}
+
   interface EsmImport {
     'propVal': number;
     'someMethod': () => void;
@@ -117,6 +120,27 @@ export namespace Components {
     'num'?: number;
   }
 
+  interface LifecycleAsyncA {}
+  interface LifecycleAsyncAAttributes extends StencilHTMLAttributes {}
+
+  interface LifecycleAsyncB {
+    'value': string;
+  }
+  interface LifecycleAsyncBAttributes extends StencilHTMLAttributes {
+    'onLifecycleLoad'?: (event: CustomEvent) => void;
+    'onLifecycleUpdate'?: (event: CustomEvent) => void;
+    'value'?: string;
+  }
+
+  interface LifecycleAsyncC {
+    'value': string;
+  }
+  interface LifecycleAsyncCAttributes extends StencilHTMLAttributes {
+    'onLifecycleLoad'?: (event: CustomEvent) => void;
+    'onLifecycleUpdate'?: (event: CustomEvent) => void;
+    'value'?: string;
+  }
+
   interface LifecycleBasicA {}
   interface LifecycleBasicAAttributes extends StencilHTMLAttributes {}
 
@@ -136,6 +160,23 @@ export namespace Components {
     'onLifecycleLoad'?: (event: CustomEvent) => void;
     'onLifecycleUpdate'?: (event: CustomEvent) => void;
     'value'?: string;
+  }
+
+  interface LifecycleOnReadyA {}
+  interface LifecycleOnReadyAAttributes extends StencilHTMLAttributes {}
+
+  interface LifecycleOnReadyB {
+    'value': number;
+  }
+  interface LifecycleOnReadyBAttributes extends StencilHTMLAttributes {
+    'value'?: number;
+  }
+
+  interface LifecycleOnReadyC {
+    'value': number;
+  }
+  interface LifecycleOnReadyCAttributes extends StencilHTMLAttributes {
+    'value'?: number;
   }
 
   interface LifecycleUnloadA {}
@@ -314,13 +355,20 @@ declare global {
     'CssVariablesRoot': Components.CssVariablesRoot;
     'CssVariables': Components.CssVariables;
     'DynamicImport': Components.DynamicImport;
+    'Es5AddclassSvg': Components.Es5AddclassSvg;
     'EsmImport': Components.EsmImport;
     'InitCssRoot': Components.InitCssRoot;
     'KeyReorderRoot': Components.KeyReorderRoot;
     'KeyReorder': Components.KeyReorder;
+    'LifecycleAsyncA': Components.LifecycleAsyncA;
+    'LifecycleAsyncB': Components.LifecycleAsyncB;
+    'LifecycleAsyncC': Components.LifecycleAsyncC;
     'LifecycleBasicA': Components.LifecycleBasicA;
     'LifecycleBasicB': Components.LifecycleBasicB;
     'LifecycleBasicC': Components.LifecycleBasicC;
+    'LifecycleOnReadyA': Components.LifecycleOnReadyA;
+    'LifecycleOnReadyB': Components.LifecycleOnReadyB;
+    'LifecycleOnReadyC': Components.LifecycleOnReadyC;
     'LifecycleUnloadA': Components.LifecycleUnloadA;
     'LifecycleUnloadB': Components.LifecycleUnloadB;
     'LifecycleUnloadRoot': Components.LifecycleUnloadRoot;
@@ -375,13 +423,20 @@ declare global {
     'css-variables-root': Components.CssVariablesRootAttributes;
     'css-variables': Components.CssVariablesAttributes;
     'dynamic-import': Components.DynamicImportAttributes;
+    'es5-addclass-svg': Components.Es5AddclassSvgAttributes;
     'esm-import': Components.EsmImportAttributes;
     'init-css-root': Components.InitCssRootAttributes;
     'key-reorder-root': Components.KeyReorderRootAttributes;
     'key-reorder': Components.KeyReorderAttributes;
+    'lifecycle-async-a': Components.LifecycleAsyncAAttributes;
+    'lifecycle-async-b': Components.LifecycleAsyncBAttributes;
+    'lifecycle-async-c': Components.LifecycleAsyncCAttributes;
     'lifecycle-basic-a': Components.LifecycleBasicAAttributes;
     'lifecycle-basic-b': Components.LifecycleBasicBAttributes;
     'lifecycle-basic-c': Components.LifecycleBasicCAttributes;
+    'lifecycle-on-ready-a': Components.LifecycleOnReadyAAttributes;
+    'lifecycle-on-ready-b': Components.LifecycleOnReadyBAttributes;
+    'lifecycle-on-ready-c': Components.LifecycleOnReadyCAttributes;
     'lifecycle-unload-a': Components.LifecycleUnloadAAttributes;
     'lifecycle-unload-b': Components.LifecycleUnloadBAttributes;
     'lifecycle-unload-root': Components.LifecycleUnloadRootAttributes;
@@ -501,6 +556,12 @@ declare global {
     new (): HTMLDynamicImportElement;
   };
 
+  interface HTMLEs5AddclassSvgElement extends Components.Es5AddclassSvg, HTMLStencilElement {}
+  var HTMLEs5AddclassSvgElement: {
+    prototype: HTMLEs5AddclassSvgElement;
+    new (): HTMLEs5AddclassSvgElement;
+  };
+
   interface HTMLEsmImportElement extends Components.EsmImport, HTMLStencilElement {}
   var HTMLEsmImportElement: {
     prototype: HTMLEsmImportElement;
@@ -525,6 +586,24 @@ declare global {
     new (): HTMLKeyReorderElement;
   };
 
+  interface HTMLLifecycleAsyncAElement extends Components.LifecycleAsyncA, HTMLStencilElement {}
+  var HTMLLifecycleAsyncAElement: {
+    prototype: HTMLLifecycleAsyncAElement;
+    new (): HTMLLifecycleAsyncAElement;
+  };
+
+  interface HTMLLifecycleAsyncBElement extends Components.LifecycleAsyncB, HTMLStencilElement {}
+  var HTMLLifecycleAsyncBElement: {
+    prototype: HTMLLifecycleAsyncBElement;
+    new (): HTMLLifecycleAsyncBElement;
+  };
+
+  interface HTMLLifecycleAsyncCElement extends Components.LifecycleAsyncC, HTMLStencilElement {}
+  var HTMLLifecycleAsyncCElement: {
+    prototype: HTMLLifecycleAsyncCElement;
+    new (): HTMLLifecycleAsyncCElement;
+  };
+
   interface HTMLLifecycleBasicAElement extends Components.LifecycleBasicA, HTMLStencilElement {}
   var HTMLLifecycleBasicAElement: {
     prototype: HTMLLifecycleBasicAElement;
@@ -541,6 +620,24 @@ declare global {
   var HTMLLifecycleBasicCElement: {
     prototype: HTMLLifecycleBasicCElement;
     new (): HTMLLifecycleBasicCElement;
+  };
+
+  interface HTMLLifecycleOnReadyAElement extends Components.LifecycleOnReadyA, HTMLStencilElement {}
+  var HTMLLifecycleOnReadyAElement: {
+    prototype: HTMLLifecycleOnReadyAElement;
+    new (): HTMLLifecycleOnReadyAElement;
+  };
+
+  interface HTMLLifecycleOnReadyBElement extends Components.LifecycleOnReadyB, HTMLStencilElement {}
+  var HTMLLifecycleOnReadyBElement: {
+    prototype: HTMLLifecycleOnReadyBElement;
+    new (): HTMLLifecycleOnReadyBElement;
+  };
+
+  interface HTMLLifecycleOnReadyCElement extends Components.LifecycleOnReadyC, HTMLStencilElement {}
+  var HTMLLifecycleOnReadyCElement: {
+    prototype: HTMLLifecycleOnReadyCElement;
+    new (): HTMLLifecycleOnReadyCElement;
   };
 
   interface HTMLLifecycleUnloadAElement extends Components.LifecycleUnloadA, HTMLStencilElement {}
@@ -785,13 +882,20 @@ declare global {
     'css-variables-root': HTMLCssVariablesRootElement
     'css-variables': HTMLCssVariablesElement
     'dynamic-import': HTMLDynamicImportElement
+    'es5-addclass-svg': HTMLEs5AddclassSvgElement
     'esm-import': HTMLEsmImportElement
     'init-css-root': HTMLInitCssRootElement
     'key-reorder-root': HTMLKeyReorderRootElement
     'key-reorder': HTMLKeyReorderElement
+    'lifecycle-async-a': HTMLLifecycleAsyncAElement
+    'lifecycle-async-b': HTMLLifecycleAsyncBElement
+    'lifecycle-async-c': HTMLLifecycleAsyncCElement
     'lifecycle-basic-a': HTMLLifecycleBasicAElement
     'lifecycle-basic-b': HTMLLifecycleBasicBElement
     'lifecycle-basic-c': HTMLLifecycleBasicCElement
+    'lifecycle-on-ready-a': HTMLLifecycleOnReadyAElement
+    'lifecycle-on-ready-b': HTMLLifecycleOnReadyBElement
+    'lifecycle-on-ready-c': HTMLLifecycleOnReadyCElement
     'lifecycle-unload-a': HTMLLifecycleUnloadAElement
     'lifecycle-unload-b': HTMLLifecycleUnloadBElement
     'lifecycle-unload-root': HTMLLifecycleUnloadRootElement
@@ -846,13 +950,20 @@ declare global {
     'css-variables-root': HTMLCssVariablesRootElement;
     'css-variables': HTMLCssVariablesElement;
     'dynamic-import': HTMLDynamicImportElement;
+    'es5-addclass-svg': HTMLEs5AddclassSvgElement;
     'esm-import': HTMLEsmImportElement;
     'init-css-root': HTMLInitCssRootElement;
     'key-reorder-root': HTMLKeyReorderRootElement;
     'key-reorder': HTMLKeyReorderElement;
+    'lifecycle-async-a': HTMLLifecycleAsyncAElement;
+    'lifecycle-async-b': HTMLLifecycleAsyncBElement;
+    'lifecycle-async-c': HTMLLifecycleAsyncCElement;
     'lifecycle-basic-a': HTMLLifecycleBasicAElement;
     'lifecycle-basic-b': HTMLLifecycleBasicBElement;
     'lifecycle-basic-c': HTMLLifecycleBasicCElement;
+    'lifecycle-on-ready-a': HTMLLifecycleOnReadyAElement;
+    'lifecycle-on-ready-b': HTMLLifecycleOnReadyBElement;
+    'lifecycle-on-ready-c': HTMLLifecycleOnReadyCElement;
     'lifecycle-unload-a': HTMLLifecycleUnloadAElement;
     'lifecycle-unload-b': HTMLLifecycleUnloadBElement;
     'lifecycle-unload-root': HTMLLifecycleUnloadRootElement;

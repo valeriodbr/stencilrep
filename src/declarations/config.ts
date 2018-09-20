@@ -106,6 +106,7 @@ export interface StencilConfig {
   assetVersioning?: ConfigAssetVersioning;
   autoprefixCss?: boolean | any;
   buildEs5?: boolean;
+  buildEsm?: boolean;
   buildScoped?: boolean;
   buildLogFilePath?: string;
   cacheDir?: string;
@@ -188,7 +189,6 @@ export interface ConfigFlags {
   args?: string[];
   address?: string;
   cache?: boolean;
-  channel?: string;
   checkVersion?: boolean;
   ci?: boolean;
   compare?: boolean;
@@ -210,11 +210,13 @@ export interface ConfigFlags {
   prod?: boolean;
   root?: string;
   screenshot?: boolean;
+  screenshotConnector?: string;
   serve?: boolean;
   serviceWorker?: boolean;
   spec?: boolean;
   ssr?: boolean;
   stats?: boolean;
+  updateScreenshot?: boolean;
   version?: boolean;
   watch?: boolean;
 }

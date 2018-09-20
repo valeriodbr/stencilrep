@@ -1,11 +1,13 @@
 import * as d from '../declarations';
-import { callNodeRefs } from '../renderer/vdom/patch';
 import { initComponentInstance } from './init-component-instance';
 import { render } from './render';
 import { RUNTIME_ERROR } from '../util/constants';
 
 
 export function queueUpdate(plt: d.PlatformApi, elm: d.HostElement) {
+  // we're actively processing this component
+  plt.processingCmp.add(elm);
+
   // only run patch if it isn't queued already
   if (!plt.isQueuedForUpdate.has(elm)) {
     plt.isQueuedForUpdate.set(elm, true);
@@ -26,7 +28,7 @@ export function queueUpdate(plt: d.PlatformApi, elm: d.HostElement) {
 }
 
 
-export function update(plt: d.PlatformApi, elm: d.HostElement, isInitialLoad?: boolean, instance?: d.ComponentInstance, ancestorHostElement?: d.HostElement, userPromise?: Promise<void> | void) {
+export async function update(plt: d.PlatformApi, elm: d.HostElement, isInitialLoad?: boolean, instance?: d.ComponentInstance, ancestorHostElement?: d.HostElement) {
   // no longer queued for update
   plt.isQueuedForUpdate.delete(elm);
 
@@ -39,11 +41,6 @@ export function update(plt: d.PlatformApi, elm: d.HostElement, isInitialLoad?: b
     if (isInitialLoad) {
       ancestorHostElement = plt.ancestorHostElementMap.get(elm);
 
-      if (ancestorHostElement && (ancestorHostElement as any)['$rendered']) {
-        // $rendered deprecated 2018-04-02
-        ancestorHostElement['s-rn'] = true;
-      }
-
       if (ancestorHostElement && !ancestorHostElement['s-rn']) {
         // this is the intial load
         // this element has an ancestor host element
@@ -54,9 +51,6 @@ export function update(plt: d.PlatformApi, elm: d.HostElement, isInitialLoad?: b
           // finally gets around to rendering its lazy self
           update(plt, elm);
         });
-
-        // $onRender deprecated 2018-04-02
-        (ancestorHostElement as any)['$onRender'] = ancestorHostElement['s-rc'];
         return;
       }
 
@@ -65,20 +59,22 @@ export function update(plt: d.PlatformApi, elm: d.HostElement, isInitialLoad?: b
       // https://www.youtube.com/watch?v=olLxrojmvMg
       instance = initComponentInstance(plt, elm, plt.hostSnapshotMap.get(elm));
 
-      if (__BUILD_CONDITIONALS__.cmpWillLoad) {
+      if (__BUILD_CONDITIONALS__.cmpWillLoad && instance) {
+        // this is the initial load and the instance was just created
         // fire off the user's componentWillLoad method (if one was provided)
         // componentWillLoad only runs ONCE, after instance's element has been
         // assigned as the host element, but BEFORE render() has been called
         try {
           if (instance.componentWillLoad) {
-            userPromise = instance.componentWillLoad();
+            await instance.componentWillLoad();
           }
         } catch (e) {
           plt.onError(e, RUNTIME_ERROR.WillLoadError, elm);
         }
       }
 
-    } else if (__BUILD_CONDITIONALS__.cmpWillUpdate) {
+    } else if (__BUILD_CONDITIONALS__.cmpWillUpdate && instance) {
+      // component already initialized, this is an update
       // already created an instance and this is an update
       // fire off the user's componentWillUpdate method (if one was provided)
       // componentWillUpdate runs BEFORE render() has been called
@@ -86,55 +82,21 @@ export function update(plt: d.PlatformApi, elm: d.HostElement, isInitialLoad?: b
       // get the returned promise (if one was provided)
       try {
         if (instance.componentWillUpdate) {
-          userPromise = instance.componentWillUpdate();
+          await instance.componentWillUpdate();
         }
       } catch (e) {
         plt.onError(e, RUNTIME_ERROR.WillUpdateError, elm);
       }
     }
 
-    if (userPromise && userPromise.then) {
-      // looks like the user return a promise!
-      // let's not actually kick off the render
-      // until the user has resolved their promise
-      userPromise.then(() => renderUpdate(plt, elm, instance, isInitialLoad));
+    // if this component has a render function, let's fire
+    // it off and generate a vnode for this
+    render(plt, plt.getComponentMeta(elm), elm, instance);
 
-    } else {
-      // user never returned a promise so there's
-      // no need to wait on anything, let's do the render now my friend
-      renderUpdate(plt, elm, instance, isInitialLoad);
-    }
-  }
-}
-
-
-export function renderUpdate(plt: d.PlatformApi, elm: d.HostElement, instance: d.ComponentInstance, isInitialLoad: boolean) {
-  // if this component has a render function, let's fire
-  // it off and generate a vnode for this
-  render(plt, plt.getComponentMeta(elm), elm, instance);
-
-  try {
-    if (isInitialLoad) {
-      // so this was the initial load i guess
-      elm['s-init']();
-      // componentDidLoad just fired off
-
-    } else {
-      if (__BUILD_CONDITIONALS__.cmpDidUpdate) {
-        // fire off the user's componentDidUpdate method (if one was provided)
-        // componentDidUpdate runs AFTER render() has been called
-        // but only AFTER an UPDATE and not after the intial render
-        instance.componentDidUpdate && instance.componentDidUpdate();
-      }
-      callNodeRefs(plt.vnodeMap.get(elm));
-    }
+    elm['s-init']();
 
     if (__BUILD_CONDITIONALS__.hotModuleReplacement) {
       elm['s-hmr-load'] && elm['s-hmr-load']();
     }
-
-  } catch (e) {
-    // derp
-    plt.onError(e, RUNTIME_ERROR.DidUpdateError, elm, true);
   }
 }

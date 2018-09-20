@@ -21,13 +21,58 @@ type PuppeteerPage = Omit<puppeteer.Page,
 export interface E2EPage extends PuppeteerPage {
 
   /**
-   * Find an element using a selector, which is the same as
+   * `Experimental`
+   * Takes a screenshot of the page, then compares the current screenshot
+   * against the master screenshot. The returned screenshot compare
+   * results can then be used to test pixel mismatches, such as
+   * `expect(results).toMatchScreenshot()`.
+   */
+  compareScreenshot(): Promise<d.ScreenshotCompare>;
+
+  /**
+   * `Experimental`
+   * Takes a screenshot of the page, then compares the current screenshot
+   * against the master screenshot. The provided `description` will be
+   * added onto its current description, which comes from the test description.
+   */
+  compareScreenshot(description: string): Promise<d.ScreenshotCompare>;
+
+  /**
+   * `Experimental`
+   * Takes a screenshot of the page, then compares the current screenshot
+   * against the master screenshot. The `opts` argument can be used to
+   * customize screenshot options.
+   */
+  compareScreenshot(opts: d.ScreenshotOptions): Promise<d.ScreenshotCompare>;
+
+  /**
+   * `Experimental`
+   * Takes a screenshot of the page, then compares the current screenshot
+   * against the master screenshot. The `description` argument will be
+   * added onto its current description, which comes from the test description.
+   * The `opts` argument can be used to customize screenshot options.
+   */
+  compareScreenshot(description: string, opts: d.ScreenshotOptions): Promise<d.ScreenshotCompare>;
+
+  /**
+   * Find an element that matches the selector, which is the same as
    * `document.querySelector(selector)`. Use `>>>` within the
-   * selector to find elements within the host element's shadow root.
+   * selector to find an element within the host element's shadow root.
    * For example, to select the first `div` inside of the component
    * `my-cmp`, the call would be `page.find('my-cmp >>> div')`.
+   * Returns `null` if an element was not found.
    */
-  find(selector: string): Promise<E2EElement>;
+  find(selector: FindSelector): Promise<E2EElement>;
+
+  /**
+   * Find all elements that match the selector, which is the same as
+   * `document.querySelectorAll(selector)`. Use `>>>` within the
+   * selector to find elements within the host element's shadow root.
+   * For example, to select all of the `li` elements inside of the component
+   * `my-cmp`, the call would be `page.findAll('my-cmp >>> li')`.
+   * Returns an empty array if no elements were found.
+   */
+  findAll(selector: string): Promise<E2EElement[]>;
 
   /**
    * During an end-to-end test, a dev-server is started so `page.goto(url)` can be used
@@ -68,10 +113,10 @@ export interface E2EPage extends PuppeteerPage {
 export interface E2EPageInternal extends E2EPage {
   isClosed(): boolean;
   _elements: E2EElementInternal[];
-  _goto(url: string, options?: Partial<puppeteer.NavigationOptions>): Promise<puppeteer.Response | null>;
   _events: WaitForEvent[];
   _eventIds: number;
-  _screenshot(options?: puppeteer.ScreenshotOptions): Promise<Buffer>;
+  _goto(url: string, options?: Partial<puppeteer.NavigationOptions>): Promise<puppeteer.Response | null>;
+  screenshot(options?: puppeteer.ScreenshotOptions): Promise<Buffer>;
 }
 
 
@@ -91,7 +136,8 @@ export interface E2EElement {
   className: string;
 
   /**
-   * Using classList is a convenient alternative to accessing an element's list of classes as a space-delimited string via element.className.
+   * Using classList is a convenient alternative to accessing an element's list
+   * of classes as a space-delimited string via `element.className`.
    */
   classList: {
     /**
@@ -118,23 +164,33 @@ export interface E2EElement {
   };
 
   /**
-   * Calling click() on an element crolls it into view if needed, and
-   * then uses page.mouse to click in the center of the element. Bear
-   * in mind that if click() triggers a navigation event and there's a
-   * separate page.waitForNavigation() promise to be resolved, you
-   * may end up with a race condition that yields unexpected results.
+   * Calling `click()` on an element scrolls it into view if needed, and
+   * then uses `page.mouse` to click in the center of the element.
    * Please see the puppeteer docs for more information.
    */
   click(options?: puppeteer.ClickOptions): void;
 
   /**
-   * Find a child element using a selector, which is the same as
+   * Find a child element that matches the selector, which is the same as
    * `element.querySelector(selector)`. Use `>>>` within the
-   * selector to find elements within a host element's shadow root.
+   * selector to find an element within a host element's shadow root.
    * For example, to select the first `div` inside of the component
-   * `my-cmp`, the call would be `element.find('my-cmp >>> div')`.
+   * `my-cmp`, which is a child of this element, the call would be
+   * `element.find('my-cmp >>> div')`. Returns `null` if no
+   * elements were found.
    */
-  find(selector: string): Promise<E2EElement>;
+  find(selector: FindSelector): Promise<E2EElement>;
+
+  /**
+   * Find all child elements that match the selector, which is the same as
+   * `element.querySelectorAll(selector)`. Use `>>>` within the
+   * selector to find elements within a host element's shadow root.
+   * For example, to select all `li` elements inside of the component
+   * `my-cmp`, which is a child of this element, the call would be
+   * `element.findAll('my-cmp >>> li')`. Returns an empty array if
+   * no elements were found.
+   */
+  findAll(selector: string): Promise<E2EElement[]>;
 
   /**
    * Sets focus on the element.
@@ -155,26 +211,35 @@ export interface E2EElement {
   getProperty(propertyName: string): Promise<any>;
 
   /**
+   * Returns an object that reports the values of all CSS properties of this
+   * element after applying active stylesheets and resolving any basic computation
+   * those values may contain. Individual CSS property values are accessed by
+   * simply indexing with CSS property names. The method is shortcut and an async
+   * version of using `window.getComputedStyle(element)` directly.
+   */
+  getComputedStyle(pseudoElt?: string | null): Promise<CSSStyleDeclaration>;
+
+  /**
    * Sets hover on the element.
    */
   hover(): Promise<void>;
 
   /**
-   * Gets and sets id property of the element.
+   * Gets and sets `id` property of the element.
    * Note that `await page.waitForChanges()` must be called before reading
    * the value if content has changed.
    */
   id: string;
 
   /**
-   * Gets and sets innerHTML property of the element.
+   * Gets and sets `innerHTML` property of the element.
    * Note that `await page.waitForChanges()` must be called before reading
    * the value if content has changed.
    */
   innerHTML: string;
 
   /**
-   * Gets and sets innerText property of the element.
+   * Gets and sets `innerText` property of the element.
    * Note that `await page.waitForChanges()` must be called before reading
    * the value if content has changed.
    */
@@ -186,29 +251,38 @@ export interface E2EElement {
   isIntersectingViewport(): Promise<boolean>;
 
   /**
+   * Resolves `true` when the element's style is `display !== 'none'`,
+   * `visibility !== 'hidden'` and `opacity !== '0'`.
+   */
+  isVisible(): Promise<boolean>;
+
+  /**
    * Node name of the node, which in an element's case is the tag name.
    * Note, this will always be upper-cased.
    */
   nodeName: string;
 
   /**
-   * The node type of the node. An element's node type is always `1`.
+   * The type of a node represented by a number.
+   * Element = 1, TextNode = 3, Comment = 8,
+   * Document Fragment (also what a shadow root is) = 11.
    */
   nodeType: number;
 
   /**
-   * Gets the element's outerHTML. This is a read-only property and will
+   * Gets the element's `outerHTML. This is a read-only property and will
    * throw an error if set.
    */
   outerHTML: string;
 
   /**
-   * Focuses the element, and then uses keyboard.down and keyboard.up.
+   * Focuses the element, and then uses `keyboard.down` and `keyboard.up`.
    * If key is a single character and no modifier keys besides Shift are
    * being held down, a keypress/input event will also be generated. The
    * text option can be specified to force an input event to be generated.
-   * Note: Modifier keys DO effect elementHandle.press. Holding down Shift
+   * Note: Modifier keys DO effect `elementHandle.press`. Holding down Shift
    * will type the text in upper case.
+   * Key names: https://github.com/GoogleChrome/puppeteer/blob/master/lib/USKeyboardLayout.js
    */
   press(key: string, options?: { text?: string, delay?: number }): Promise<void>;
 
@@ -233,7 +307,7 @@ export interface E2EElement {
   /**
    * The ShadowRoot interface of the Shadow DOM API is the root node of a
    * DOM subtree that is rendered separately from a document's main DOM tree.
-   * This value will be `null` if the element does not have a shadowRoot.
+   * This value will be `null` if the element does not have a `shadowRoot`.
    */
   shadowRoot: ShadowRoot;
 
@@ -247,42 +321,84 @@ export interface E2EElement {
   spyOnEvent(eventName: string): Promise<d.EventSpy>;
 
   /**
+   * Represents the tab order of the current element. Setting the
+   * `tabIndex` property will also set the `tabindex` attribute.
+   */
+  tabIndex: number;
+
+  /**
    * Tag name of the element. Note, this will always be upper-cased.
    */
   tagName: string;
 
   /**
    * This method scrolls the element it into view if needed,
-   * and then uses page.touchscreen to tap in the center of the element.
+   * and then uses `page.touchscreen` to tap in the center of the element.
    */
   tap(): Promise<void>;
 
   /**
-   * The textContent property represents the text content of a node
+   * The `textContent` property represents the text content of a node
    * and its descendants. Note that `await page.waitForChanges()` must
    * be called before reading the value if content has changed.
    */
   textContent: string;
 
   /**
-   * This is a convenience method to easily create a CustomEvent,
+   * Represents the `title` of the element, the text usually displayed in a
+   * 'tool tip' popup when the mouse is over the displayed node.
+   */
+  title: string;
+
+  /**
+   * This is a convenience method to easily create a `CustomEvent`,
    * and dispatch it from the element, to include any custom event
-   * detail data.
+   * `detail` data as the second argument.
    */
   triggerEvent(eventName: string, eventInitDict?: d.EventInitDict): void;
 
   /**
    * Sends a keydown, keypress/input, and keyup event for each character in the text.
-   * To press a special key, like Control or ArrowDown, use keyboard.press.
-   * @param text A text to type into a focused element.
+   * To press a special key, like Control or ArrowDown, use `keyboard.press`.
    */
   type(text: string, options?: { delay: number }): Promise<void>;
+
+  /**
+   * Waits until the element's style is `display !== 'none'`,
+   * `visibility !== 'hidden'`, `opacity !== '0'` and the element
+   * is connected to the document.
+   */
+  waitForVisible(): Promise<void>;
+
+  /**
+   * Waits until the element's style is `display === 'none'`, or
+   * `visibility === 'hidden'`, or `opacity === '0'`, or the element
+   * is no longer connected to the document.
+   */
+  waitForNotVisible(): Promise<void>;
 }
 
 
 export interface E2EElementInternal extends E2EElement {
+  e2eDispose(): Promise<void>;
   e2eRunActions(): Promise<void>;
   e2eSync(): Promise<void>;
+}
+
+
+export type FindSelector = string | FindSelectorOptions;
+
+export interface FindSelectorOptions {
+  /**
+   * Finds an element with text content matching this
+   * exact value after the whitespace has been trimmed.
+   */
+  text?: string;
+
+  /**
+   * Finds an element with text content containing this value.
+   */
+  contains?: string;
 }
 
 

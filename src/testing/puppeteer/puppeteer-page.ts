@@ -1,8 +1,9 @@
 import * as d from '../../declarations';
 import * as pd from './puppeteer-declarations';
 import { closePage } from './puppeteer-browser';
-import { find } from './puppeteer-find';
-import { initE2EPageEvents } from './puppeteer-events';
+import { find, findAll } from './puppeteer-find';
+import { initPageEvents } from './puppeteer-events';
+import { initPageScreenshot } from './puppeteer-screenshot';
 import * as puppeteer from 'puppeteer';
 
 
@@ -24,7 +25,9 @@ export async function newE2EPage(opts: pd.NewE2EPageOptions = {}): Promise<pd.E2
 
   await page.setCacheEnabled(false);
 
-  await initE2EPageEvents(page);
+  await initPageEvents(page);
+
+  initPageScreenshot(page);
 
   let docPromise: Promise<puppeteer.JSHandle> = null;
 
@@ -35,6 +38,15 @@ export async function newE2EPage(opts: pd.NewE2EPageOptions = {}): Promise<pd.E2
     const documentJsHandle = await docPromise;
     const docHandle = documentJsHandle.asElement();
     return find(page, docHandle, selector);
+  };
+
+  page.findAll = async (selector: string) => {
+    if (!docPromise) {
+      docPromise = page.evaluateHandle('document');
+    }
+    const documentJsHandle = await docPromise;
+    const docHandle = documentJsHandle.asElement();
+    return findAll(page, docHandle, selector);
   };
 
   page.waitForChanges = waitForChanges.bind(null, page);
@@ -221,7 +233,12 @@ async function waitForChanges(page: pd.E2EPageInternal) {
   }));
 
   await page.evaluate(() => {
-    return new Promise(resolve => window.requestAnimationFrame(resolve));
+
+    const promises = (window as d.WindowData)['s-apps'].map((appNamespace: string) => {
+      return (window as any)[appNamespace].onReady();
+    });
+
+    return Promise.all(promises);
   });
 
   await Promise.all(page._elements.map(async elm => {

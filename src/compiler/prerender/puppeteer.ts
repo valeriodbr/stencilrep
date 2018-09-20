@@ -1,8 +1,7 @@
 import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
 import { catchError } from '../util';
-import { parse } from 'parse5';
-import { serialize } from '../../testing/mock-doc/serialize-node';
+import { parseHtmlToDocument, serializeNodeToHtml } from '@stencil/core/mock-doc';
 
 
 export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, url: string) {
@@ -134,8 +133,8 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
   results.html = await page.content();
 
   if (outputTarget.prettyHtml) {
-    const doc = parse(results.html);
-    results.html = serialize(doc, {
+    const doc = parseHtmlToDocument(results.html);
+    results.html = serializeNodeToHtml(doc, {
       pretty: true
     });
   }

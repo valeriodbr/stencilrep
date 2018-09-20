@@ -236,12 +236,16 @@ export class NodeSystem implements d.StencilSystem {
     return this.sysWorker.run('scopeCss', [cssText, scopeId, hostScopeId, slotScopeId]);
   }
 
+  get color() {
+    return this.sysUtil.turbocolor;
+  }
+
   get semver() {
     return this.sysUtil.semver;
   }
 
-  async transpileToEs5(cwd: string, input: string) {
-    return this.sysWorker.run('transpileToEs5', [cwd, input]);
+  async transpileToEs5(cwd: string, input: string, inlineHelpers: boolean) {
+    return this.sysWorker.run('transpileToEs5', [cwd, input, inlineHelpers]);
   }
 
   get url() {

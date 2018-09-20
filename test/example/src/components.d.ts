@@ -40,6 +40,12 @@ export namespace Components {
   interface DomApi {}
   interface DomApiAttributes extends StencilHTMLAttributes {}
 
+  interface DomInteraction {}
+  interface DomInteractionAttributes extends StencilHTMLAttributes {}
+
+  interface DomVisible {}
+  interface DomVisibleAttributes extends StencilHTMLAttributes {}
+
   interface ElementCmp {}
   interface ElementCmpAttributes extends StencilHTMLAttributes {}
 
@@ -89,6 +95,8 @@ declare global {
     'CarDetail': Components.CarDetail;
     'CarList': Components.CarList;
     'DomApi': Components.DomApi;
+    'DomInteraction': Components.DomInteraction;
+    'DomVisible': Components.DomVisible;
     'ElementCmp': Components.ElementCmp;
     'EventCmp': Components.EventCmp;
     'ListenCmp': Components.ListenCmp;
@@ -102,6 +110,8 @@ declare global {
     'car-detail': Components.CarDetailAttributes;
     'car-list': Components.CarListAttributes;
     'dom-api': Components.DomApiAttributes;
+    'dom-interaction': Components.DomInteractionAttributes;
+    'dom-visible': Components.DomVisibleAttributes;
     'element-cmp': Components.ElementCmpAttributes;
     'event-cmp': Components.EventCmpAttributes;
     'listen-cmp': Components.ListenCmpAttributes;
@@ -133,6 +143,18 @@ declare global {
   var HTMLDomApiElement: {
     prototype: HTMLDomApiElement;
     new (): HTMLDomApiElement;
+  };
+
+  interface HTMLDomInteractionElement extends Components.DomInteraction, HTMLStencilElement {}
+  var HTMLDomInteractionElement: {
+    prototype: HTMLDomInteractionElement;
+    new (): HTMLDomInteractionElement;
+  };
+
+  interface HTMLDomVisibleElement extends Components.DomVisible, HTMLStencilElement {}
+  var HTMLDomVisibleElement: {
+    prototype: HTMLDomVisibleElement;
+    new (): HTMLDomVisibleElement;
   };
 
   interface HTMLElementCmpElement extends Components.ElementCmp, HTMLStencilElement {}
@@ -176,6 +198,8 @@ declare global {
     'car-detail': HTMLCarDetailElement
     'car-list': HTMLCarListElement
     'dom-api': HTMLDomApiElement
+    'dom-interaction': HTMLDomInteractionElement
+    'dom-visible': HTMLDomVisibleElement
     'element-cmp': HTMLElementCmpElement
     'event-cmp': HTMLEventCmpElement
     'listen-cmp': HTMLListenCmpElement
@@ -189,6 +213,8 @@ declare global {
     'car-detail': HTMLCarDetailElement;
     'car-list': HTMLCarListElement;
     'dom-api': HTMLDomApiElement;
+    'dom-interaction': HTMLDomInteractionElement;
+    'dom-visible': HTMLDomVisibleElement;
     'element-cmp': HTMLElementCmpElement;
     'event-cmp': HTMLEventCmpElement;
     'listen-cmp': HTMLListenCmpElement;

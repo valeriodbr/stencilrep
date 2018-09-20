@@ -32,7 +32,7 @@ export class Testing implements d.Testing {
 
   async runTests() {
     if (!this.isValid || !this.compiler) {
-      return;
+      return false;
     }
 
     const env: d.E2EProcessEnv = process.env;
@@ -41,7 +41,7 @@ export class Testing implements d.Testing {
     const { isValid, outputTarget } = getOutputTarget(config);
     if (!isValid) {
       this.isValid = false;
-      return;
+      return false;
     }
 
     const msg: string[] = [];
@@ -59,8 +59,13 @@ export class Testing implements d.Testing {
 
     const doScreenshots = !!(config.flags.e2e && config.flags.screenshot);
     if (doScreenshots) {
-      env.__STENCIL_SCREENSHOTS__ = 'true';
-      config.logger.info(config.logger.magenta(`generating screenshots`));
+      env.__STENCIL_SCREENSHOT__ = 'true';
+
+      if (config.flags.updateScreenshot) {
+        config.logger.info(config.logger.magenta(`updating master screenshots`));
+      } else {
+        config.logger.info(config.logger.magenta(`comparing against master screenshots`));
+      }
     }
 
     const jestEnvNodeModule = config.sys.lazyRequire.getModulePath('jest-environment-node');
@@ -83,7 +88,7 @@ export class Testing implements d.Testing {
 
       if (!results || (!config.watch && hasError(results && results.diagnostics))) {
         await this.destroy();
-        process.exit(1);
+        return false;
       }
 
       if (this.devServer) {
@@ -97,13 +102,11 @@ export class Testing implements d.Testing {
 
     this.jestConfigPath = await setupJestConfig(config);
 
-    try {
-      await runJest(config, this.jestConfigPath, doScreenshots);
-    } catch (e) {
-      config.logger.error(e);
-    }
+    const passed = await runJest(config, env, this.jestConfigPath, doScreenshots);
 
     config.logger.info('');
+
+    return passed;
   }
 
   async destroy() {
