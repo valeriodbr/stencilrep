@@ -16,15 +16,30 @@ export interface RenderOptions {
 }
 
 
-export interface PrerenderResults {
+export interface PrerenderResults extends PageAnalysis {
   url: string;
   html: string;
+  document: Document;
+}
+
+
+export interface PageAnalysis {
+  pathname: string;
+  search: string;
+  hash: string;
   anchorUrls: string[];
   diagnostics: d.Diagnostic[];
   pageErrors: string[];
-  requestFailures: string[];
-  requestSuccesses: string[];
-  metrics: PageMetrics;
+  requests: PageRequest[];
+  metrics?: PageMetrics;
+  coverage?: PageCoverage;
+}
+
+
+export interface PageRequest {
+  url: string;
+  type: string;
+  status: string;
 }
 
 
@@ -40,6 +55,20 @@ export interface PageMetrics {
   taskDuration?: number;
   jsHeapUsedSize?: number;
   jsHeapTotalSize?: number;
+  htmlBytes?: number;
+}
+
+
+export interface PageCoverage {
+  css: PageCoverageEntry[];
+  js: PageCoverageEntry[];
+}
+
+
+export interface PageCoverageEntry {
+  url: string;
+  totalBytes: number;
+  usedBytes: number;
 }
 
 

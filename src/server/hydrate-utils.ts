@@ -65,7 +65,7 @@ function createConsole(config: d.Config, opts: d.HydrateOptions, results: d.Hydr
     opts.console.error = function(...args: string[]) {
       results.diagnostics.push({
         level: `error`,
-        type: `hydrate`,
+        type: `prerender`,
         header: `runtime console.error: ${pathname}`,
         messageText: args.join(', ')
       });
@@ -78,7 +78,7 @@ function createConsole(config: d.Config, opts: d.HydrateOptions, results: d.Hydr
         opts.console[level] = function(...args: string[]) {
           results.diagnostics.push({
             level: level as any,
-            type: 'hydrate',
+            type: 'prerender',
             header: `runtime console.${level}: ${pathname}`,
             messageText: args.join(', ')
           });

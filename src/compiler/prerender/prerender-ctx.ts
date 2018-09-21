@@ -1,6 +1,7 @@
 import * as d from '../../declarations';
 import { closePuppeteerBrowser, ensurePuppeteer, prerender, startPuppeteerBrowser } from './puppeteer';
-import { getHost, queueUrlsToPrerender } from './prerender-utils';
+import { extractResolvedAnchorUrls, getHost, queueUrlsToPrerender } from './prerender-utils';
+import { optimizeHtml } from '../html/optimize-html';
 import { writePrerenderResults } from './prerender-write';
 import { hasError } from '../util';
 
@@ -87,21 +88,30 @@ export class PrerenderCtx {
     // prerender this url and wait on the results
     const results = await prerender(this.config, this.outputTarget, this.buildCtx, this.browser, url);
 
+    // now that we've prerendered the content
+    // let's optimize the document node even further
+    await optimizeHtml(this.config, this.compilerCtx, this.outputTarget, results);
+
     // we're done processing now
     this.processing.delete(url);
 
     // consider it completed
     this.completed.add(url);
 
+    this.buildCtx.diagnostics.push(...results.diagnostics);
+
     if (!hasError(results.diagnostics)) {
+      // get all of the resolved anchor urls to continue to crawll
+      extractResolvedAnchorUrls(results.anchorUrls, results.document.body);
+
       // no errors, write out the results and modify the html as needed
-      const urls = await writePrerenderResults(this.config, this.compilerCtx, this.buildCtx, this.outputTarget, results);
+      await writePrerenderResults(this.config, this.compilerCtx, this.buildCtx, this.outputTarget, results);
 
       if (this.outputTarget.prerenderUrlCrawl) {
         // we do want to keep crawling urls
         // add any urls we found to the queue to be prerendered still
-        urls.forEach(url => {
-          queueUrlsToPrerender(this.config, this.outputTarget, this.host, this.queue, this.processing, this.completed, url);
+        results.anchorUrls.forEach(anchorUrl => {
+          queueUrlsToPrerender(this.config, this.outputTarget, this.host, this.queue, this.processing, this.completed, anchorUrl);
         });
       }
     }

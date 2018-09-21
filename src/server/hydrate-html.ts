@@ -77,7 +77,7 @@ export function hydrateHtml(config: d.Config, compilerCtx: d.CompilerCtx, output
           // gahh, something's up
           hydrateResults.diagnostics.push({
             level: 'error',
-            type: 'hydrate',
+            type: 'prerender',
             header: 'DOM Serialize',
             messageText: e
           });

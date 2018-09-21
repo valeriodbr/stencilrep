@@ -1,33 +1,31 @@
 import * as d from '../../declarations';
+import { catchError } from '../util';
 import { removeUnusedStyles } from './remove-unused-styles';
 import { UsedSelectors } from '../html/used-selectors';
 
 
-export function optimizeSsrStyles(config: d.Config, outputTarget: d.OutputTargetHydrate, doc: Document, diagnostics: d.Diagnostic[]) {
-  const ssrStyleElm = mergeSsrStyles(doc);
+export function optimizeSsrStyles(config: d.Config, outputTarget: d.OutputTargetHydrate, results: d.PrerenderResults) {
+  if (outputTarget.removeUnusedStyles === false) {
+    return;
+  }
+
+  const ssrStyleElm = mergeSsrStyles(results.document);
 
   if (ssrStyleElm == null) {
     return;
   }
 
-  if (outputTarget.removeUnusedStyles !== false) {
-    // removeUnusedStyles is the default
-    try {
-      // pick out all of the selectors that are actually
-      // being used in the html document
-      const usedSelectors = new UsedSelectors(doc.documentElement);
+  // removeUnusedStyles is the default
+  try {
+    // pick out all of the selectors that are actually
+    // being used in the html document
+    const usedSelectors = new UsedSelectors(results.document.documentElement);
 
-      // remove any selectors that are not used in this document
-      ssrStyleElm.innerHTML = removeUnusedStyles(config, usedSelectors, ssrStyleElm.innerHTML, diagnostics);
+    // remove any selectors that are not used in this document
+    ssrStyleElm.innerHTML = removeUnusedStyles(config, usedSelectors, ssrStyleElm.innerHTML, results.diagnostics);
 
-    } catch (e) {
-      diagnostics.push({
-        level: 'error',
-        type: 'hydrate',
-        header: 'HTML Selector Parse',
-        messageText: e
-      });
-    }
+  } catch (e) {
+    catchError(results.diagnostics, e);
   }
 }
 

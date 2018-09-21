@@ -12,6 +12,29 @@ export function getHost(config: d.Config, outputTarget: d.OutputTargetWww) {
 }
 
 
+export function extractResolvedAnchorUrls(anchorUrls: string[], elm: HTMLElement) {
+  if (elm) {
+
+    if (elm.nodeName === 'A') {
+      const resolvedAnchorUrl = elm.getAttribute('data-resolved-url');
+      if (resolvedAnchorUrl) {
+        if (!anchorUrls.includes(resolvedAnchorUrl)) {
+          anchorUrls.push(resolvedAnchorUrl);
+        }
+        elm.removeAttribute('data-resolved-url');
+      }
+    }
+
+    const children = elm.children as any;
+    if (children) {
+      for (let i = 0; i < children.length; i++) {
+        extractResolvedAnchorUrls(anchorUrls, children[i]);
+      }
+    }
+  }
+}
+
+
 export function queueUrlsToPrerender(config: d.Config, outputTarget: d.OutputTargetWww, host: string, queuedUrls: string[], processingUrls: Set<string>, completedUrls: Set<string>, url: string) {
   if (typeof url !== 'string') {
     return;

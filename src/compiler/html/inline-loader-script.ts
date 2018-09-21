@@ -1,28 +1,31 @@
 import * as d from '../../declarations';
+import { catchError, normalizePath } from '../util';
 import { getLoaderFileName, getLoaderPath } from '../app/app-file-naming';
-import { normalizePath } from '../util';
 
 
 export async function inlineLoaderScript(
   config: d.Config,
   compilerCtx: d.CompilerCtx,
   outputTarget: d.OutputTargetHydrate,
-  windowLocationPath: string,
-  doc: Document
+  results: d.PrerenderResults
 ) {
-  // create the script url we'll be looking for
-  const loaderFileName = getLoaderFileName(config);
+  try {
+    // create the script url we'll be looking for
+    const loaderFileName = getLoaderFileName(config);
 
-  // find the external loader script
-  // which is usually in the <head> and a pretty small external file
-  // now that we're prerendering the html, and all the styles and html
-  // will get hardcoded in the output, it's safe to now put the
-  // loader script at the bottom of <body>
-  const scriptElm = findExternalLoaderScript(doc, loaderFileName);
+    // find the external loader script
+    // which is usually in the <head> and a pretty small external file
+    // now that we're prerendering the html, and all the styles and html
+    // will get hardcoded in the output, it's safe to now put the
+    // loader script at the bottom of <body>
+    const scriptElm = findExternalLoaderScript(results.document, loaderFileName);
 
-  if (scriptElm) {
-    // append the loader script content to the bottom of <body>
-    await updateInlineLoaderScriptElement(config, compilerCtx, outputTarget, doc, windowLocationPath, scriptElm);
+    if (scriptElm) {
+      // append the loader script content to the bottom of <body>
+      await updateInlineLoaderScriptElement(config, compilerCtx, outputTarget, results.document, results.url, scriptElm);
+    }
+  } catch (e) {
+    catchError(results.diagnostics, e);
   }
 }
 

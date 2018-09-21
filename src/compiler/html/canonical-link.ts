@@ -1,25 +1,26 @@
 import * as d from '../../declarations';
+import { catchError } from '../util';
 
 
-export function updateCanonicalLink(config: d.Config, doc: Document, windowLocationPath: string) {
+export function updateCanonicalLink(config: d.Config, results: d.PrerenderResults) {
+  try {
+    // https://webmasters.googleblog.com/2009/02/specify-your-canonical.html
+    // <link rel="canonical" href="http://www.example.com/product.php?item=swedish-fish" />
 
-  // https://webmasters.googleblog.com/2009/02/specify-your-canonical.html
-  // <link rel="canonical" href="http://www.example.com/product.php?item=swedish-fish" />
+    const canonicalLink = results.document.querySelector('link[rel="canonical"]');
+    if (!canonicalLink) {
+      return;
+    }
 
-  if (typeof windowLocationPath !== 'string') {
-    return;
+    const existingHref = canonicalLink.getAttribute('href');
+
+    const updatedRref = updateCanonicalLinkHref(config, existingHref, results.url);
+
+    canonicalLink.setAttribute('href', updatedRref);
+
+  } catch (e) {
+    catchError(results.diagnostics, e);
   }
-
-  const canonicalLink = doc.querySelector('link[rel="canonical"]');
-  if (!canonicalLink) {
-    return;
-  }
-
-  const existingHref = canonicalLink.getAttribute('href');
-
-  const updatedRref = updateCanonicalLinkHref(config, existingHref, windowLocationPath);
-
-  canonicalLink.setAttribute('href', updatedRref);
 }
 
 

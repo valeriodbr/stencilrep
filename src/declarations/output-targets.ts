@@ -139,7 +139,12 @@ export interface OutputTargetWww extends OutputTargetBase {
    * Default: `true`
    */
   removeUnusedStyles?: boolean;
+
+  pageAnalysis?: {
+    dir?: string;
+  };
 }
+
 
 export interface OutputTargetHydrate extends OutputTargetWww, d.HydrateOptions {
   html?: string;

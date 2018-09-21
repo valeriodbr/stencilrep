@@ -1,19 +1,21 @@
 import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
 import { catchError } from '../util';
-import { parseHtmlToDocument, serializeNodeToHtml } from '@stencil/core/mock-doc';
+import { parseHtmlToDocument } from '@stencil/core/mock-doc';
 
 
 export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, url: string) {
   const results: d.PrerenderResults = {
     url: url,
+    pathname: null,
+    search: null,
+    hash: null,
     html: null,
+    document: null,
     anchorUrls: [],
     diagnostics: [],
     pageErrors: [],
-    requestFailures: [],
-    requestSuccesses: [],
-    metrics: {}
+    requests: [],
   };
 
   try {
@@ -24,13 +26,46 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
 
     addPageListeners(page, results);
 
-    await interceptRequests(config, outputTarget, buildCtx, page);
+    await interceptRequests(config, outputTarget, buildCtx, page, results);
+
+    if (outputTarget.pageAnalysis) {
+      await Promise.all([
+        page.coverage.startJSCoverage(),
+        page.coverage.startCSSCoverage()
+      ]);
+    }
 
     await page.goto(url, {
       waitUntil: 'load'
     });
 
     await appLoaded;
+
+    if (outputTarget.pageAnalysis) {
+      const [jsCoverage, cssCoverage, metrics] = await Promise.all([
+        page.coverage.stopJSCoverage(),
+        page.coverage.stopCSSCoverage(),
+        page.metrics()
+      ]);
+
+      results.coverage = {
+        css: calulateCoverage(cssCoverage),
+        js: calulateCoverage(jsCoverage)
+      };
+
+      results.metrics = {
+        jsEventListeners: metrics.JSEventListeners,
+        nodes: metrics.Nodes,
+        layoutCount: metrics.LayoutCount,
+        recalcStyleCount: metrics.RecalcStyleCount,
+        layoutDuration: metrics.LayoutDuration,
+        recalcStyleDuration: metrics.RecalcStyleDuration,
+        scriptDuration: metrics.ScriptDuration,
+        taskDuration: metrics.TaskDuration,
+        jsHeapUsedSize: metrics.JSHeapUsedSize,
+        jsHeapTotalSize: metrics.JSHeapTotalSize,
+      };
+    }
 
     await processPage(outputTarget, page, results);
 
@@ -45,8 +80,6 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
 
 
 async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page, results: d.PrerenderResults) {
-  await getMetrics(page, results);
-
   const pageUpdateConfig: PageUpdateConfig = {
     collapseWhitespace: (outputTarget.collapseWhitespace !== false),
     removeHtmlComments: (outputTarget.removeHtmlComments !== false)
@@ -55,27 +88,46 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
   const extractData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
     // BROWSER CONTEXT
 
+    const url = new URL(location.href);
+
     // data object to build up and pass back from the browser to main
     const extractData: ExtractData = {
-      anchorUrls: [],
+      html: '',
+      url: url.href,
+      pathname: url.pathname,
+      search: url.search,
+      hash: url.hash,
       stencilAppLoadDuration: (window as StencilWindow).stencilAppLoadDuration
     };
 
     const WHITESPACE_SENSITIVE_TAGS = ['PRE', 'SCRIPT', 'STYLE', 'TEXTAREA'];
 
     function optimize(node: Node) {
+      if (!node) {
+        return;
+      }
+
       if (node.nodeType === 1) {
         // element
         for (let i = node.childNodes.length - 1; i >= 0; i--) {
           optimize(node.childNodes[i]);
         }
 
-        if (node.nodeName === 'A') {
-          // anchor element
-          const href = (node as HTMLAnchorElement).href.trim();
-          if (href && !href.startsWith('data:') && !extractData.anchorUrls.includes(href)) {
-            // collect anchor element
-            extractData.anchorUrls.push(href);
+        const tagName = (node as HTMLAnchorElement).nodeName.toLowerCase();
+
+        if (tagName === 'a') {
+          if ((node as HTMLAnchorElement).href) {
+            (node as HTMLElement).setAttribute('data-resolved-url', (node as HTMLAnchorElement).href);
+          }
+
+        } else if (tagName === 'script') {
+          if ((node as HTMLScriptElement).src) {
+            (node as HTMLElement).setAttribute('data-resolved-url', (node as HTMLScriptElement).src);
+          }
+
+        } else if (tagName === 'link') {
+          if ((node as HTMLLinkElement).rel.toLowerCase() === 'stylesheet' && (node as HTMLLinkElement).href) {
+            (node as HTMLElement).setAttribute('data-resolved-url', (node as HTMLLinkElement).href);
           }
         }
 
@@ -111,51 +163,81 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
       }
     }
 
-    // let's do this
-    optimize(document.documentElement);
+    if (document.documentElement) {
+      // let's do this
+      optimize(document.documentElement);
 
-    // make sure the meta charset is first
-    const findMetaCharset = document.head.querySelector('meta[charset]');
-    if (findMetaCharset) {
-      findMetaCharset.remove();
+      if (!document.documentElement.hasAttribute('lang')) {
+        document.documentElement.setAttribute('lang', 'en-US');
+      }
+
+      if (!document.documentElement.hasAttribute('dir')) {
+        document.documentElement.setAttribute('dir', 'ltr');
+      }
     }
-    const metaCharset = document.createElement('meta');
-    metaCharset.setAttribute('charset', 'utf-8');
-    document.head.insertBefore(metaCharset, document.head.firstChild);
+
+    if (document.head) {
+      // make sure the meta charset is first element in document.head
+      let metaCharset = document.head.querySelector('meta[charset]');
+      if (metaCharset) {
+        if (document.head.firstElementChild !== metaCharset) {
+          metaCharset.remove();
+          document.head.insertBefore(metaCharset, document.head.firstChild);
+        }
+
+      } else {
+        metaCharset = document.createElement('meta');
+        metaCharset.setAttribute('charset', 'utf-8');
+        document.head.insertBefore(metaCharset, document.head.firstChild);
+      }
+
+      // make sure sure we've got the http-equiv="X-UA-Compatible" IE=Edge meta tag added
+      let metaUaCompatible = document.head.querySelector('meta[http-equiv="X-UA-Compatible"]');
+      if (!metaUaCompatible) {
+        metaUaCompatible = document.createElement('meta');
+        metaUaCompatible.setAttribute('http-equiv', 'X-UA-Compatible');
+        metaUaCompatible.setAttribute('content', 'IE=Edge');
+        document.head.insertBefore(metaUaCompatible, metaCharset.nextSibling);
+      }
+    }
+
+    if (document.doctype) {
+      extractData.html = new XMLSerializer().serializeToString(document.doctype).toLowerCase();
+    } else {
+      extractData.html = '<!doctype html>';
+    }
+
+    if (document.documentElement) {
+      extractData.html += document.documentElement.outerHTML;
+    }
 
     return extractData;
 
   }, pageUpdateConfig);
 
-  results.anchorUrls = extractData.anchorUrls;
-  results.metrics.appLoadDuration = extractData.stencilAppLoadDuration;
+  results.document = parseHtmlToDocument(extractData.html);
+  results.url = extractData.url;
 
-  results.html = await page.content();
-
-  if (outputTarget.prettyHtml) {
-    const doc = parseHtmlToDocument(results.html);
-    results.html = serializeNodeToHtml(doc, {
-      pretty: true
-    });
+  if (results.metrics) {
+    results.metrics.appLoadDuration = extractData.stencilAppLoadDuration;
   }
 }
 
 
-async function getMetrics(page: puppeteer.Page, results: d.PrerenderResults) {
-  const metrics = await page.metrics();
+function calulateCoverage(entries: puppeteer.CoverageEntry[]) {
+  return entries.map(entry => {
+    const converageEntry: d.PageCoverageEntry = {
+      url: entry.url,
+      totalBytes: entry.text.length,
+      usedBytes: 0
+    };
 
-  if (metrics) {
-    results.metrics.jsEventListeners = metrics.JSEventListeners;
-    results.metrics.nodes = metrics.Nodes;
-    results.metrics.layoutCount = metrics.LayoutCount;
-    results.metrics.recalcStyleCount = metrics.RecalcStyleCount;
-    results.metrics.layoutDuration = metrics.LayoutDuration;
-    results.metrics.recalcStyleDuration = metrics.RecalcStyleDuration;
-    results.metrics.scriptDuration = metrics.ScriptDuration;
-    results.metrics.taskDuration = metrics.TaskDuration;
-    results.metrics.jsHeapUsedSize = metrics.JSHeapUsedSize;
-    results.metrics.jsHeapTotalSize = metrics.JSHeapTotalSize;
-  }
+    for (const range of entry.ranges) {
+      converageEntry.usedBytes += range.end - range.start - 1;
+    }
+
+    return converageEntry;
+  });
 }
 
 
@@ -172,27 +254,34 @@ interface StencilWindow {
 
 
 interface ExtractData {
-  anchorUrls: string[];
+  html: string;
   stencilAppLoadDuration: number;
+  url: string;
+  pathname: string;
+  search: string;
+  hash: string;
 }
 
 
-async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, page: puppeteer.Page) {
+async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, page: puppeteer.Page, results: d.PrerenderResults) {
   await page.setRequestInterception(true);
 
   page.on('request', async (interceptedRequest) => {
     let url = interceptedRequest.url();
+    const resourceType = interceptedRequest.resourceType();
+
+    results.requests.push({
+      url: url,
+      type: resourceType,
+      status: null
+    });
+
     const parsedUrl = config.sys.url.parse(url);
 
-    if (shouldAbort(outputTarget, parsedUrl)) {
+    if (shouldAbort(outputTarget, parsedUrl, resourceType)) {
       await interceptedRequest.abort();
-      return;
-    }
 
-    const pathSplit = parsedUrl.pathname.split('/');
-    const fileName = pathSplit[pathSplit.length - 1];
-
-    if (fileName === buildCtx.coreFileName) {
+    } else if (isCoreScript(buildCtx, parsedUrl, resourceType)) {
       url = url.replace(buildCtx.coreFileName, buildCtx.coreSsrFileName);
 
       await interceptedRequest.continue({
@@ -205,7 +294,44 @@ async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetW
   });
 }
 
-function shouldAbort(outputTargets: d.OutputTargetWww, parsedUrl: d.Url) {
+
+function isCoreScript(buildCtx: d.BuildCtx, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
+  if (resourceType !== 'script') {
+    return false;
+  }
+
+  const pathSplit = parsedUrl.pathname.split('/');
+  const fileName = pathSplit[pathSplit.length - 1];
+
+  return (fileName === buildCtx.coreFileName);
+}
+
+
+function shouldAbort(outputTargets: d.OutputTargetWww, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
+  if (resourceType === 'image') {
+    return false;
+  }
+
+  if (resourceType === 'media') {
+    return false;
+  }
+
+  if (resourceType === 'font') {
+    return false;
+  }
+
+  if (resourceType === 'manifest') {
+    return false;
+  }
+
+  if (resourceType === 'websocket') {
+    return false;
+  }
+
+  if (parsedUrl.path.includes('data:image')) {
+    return false;
+  }
+
   return outputTargets.prerenderAbortRequests.some(abortReq => {
     if (typeof abortReq.domain === 'string') {
       return parsedUrl.host.includes(abortReq.domain);
@@ -226,11 +352,17 @@ function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
   });
 
   page.on('requestfailed', rsp => {
-    results.requestFailures.push(rsp.url());
+    const url = results.requests.find(r => r.url === rsp.url());
+    if (url) {
+      url.status = 'failed';
+    }
   });
 
   page.on('requestfinished', rsp => {
-    results.requestSuccesses.push(rsp.url());
+    const url = results.requests.find(r => r.url === rsp.url());
+    if (url) {
+      url.status = 'success';
+    }
   });
 }
 

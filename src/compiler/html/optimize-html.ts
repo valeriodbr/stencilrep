@@ -1,7 +1,6 @@
 import * as d from '../../declarations';
 import { assetVersioning } from '../asset-versioning/asset-versioning';
-import { catchError } from '../util';
-import { collapseHtmlWhitepace } from './collapse-html-whitespace';
+import { buildError, catchError } from '../util';
 import { inlineExternalAssets } from './inline-external-assets';
 import { inlineLoaderScript } from './inline-loader-script';
 import { minifyInlineScripts, minifyInlineStyles } from './minify-inline-content';
@@ -13,100 +12,70 @@ export async function optimizeHtml(
   config: d.Config,
   compilerCtx: d.CompilerCtx,
   hydrateTarget: d.OutputTargetHydrate,
-  windowLocationPath: string,
-  doc: Document,
-  diagnostics: d.Diagnostic[]
+  results: d.PrerenderResults
 ) {
-  const promises: Promise<any>[] = [];
+  if (!results.document) {
+    const diagnostic = buildError(results.diagnostics);
+    diagnostic.type = 'prerender';
+    diagnostic.header = `Invalid document`;
+    diagnostic.messageText = `Prerendering was unable to parse document`;
+    return;
+  }
 
   if (hydrateTarget.hydrateComponents) {
-    doc.documentElement.setAttribute(
-      'data-ssr',
+    results.document.documentElement.setAttribute(
+      'data-prerendered',
       (typeof hydrateTarget.timestamp === 'string' ? hydrateTarget.timestamp : '')
     );
   }
 
   if (hydrateTarget.canonicalLink) {
-    try {
-      updateCanonicalLink(config, doc, windowLocationPath);
-
-    } catch (e) {
-      diagnostics.push({
-        level: 'error',
-        type: 'hydrate',
-        header: 'Insert Canonical Link',
-        messageText: e
-      });
-    }
+    updateCanonicalLink(config, results);
   }
 
   if (hydrateTarget.inlineStyles) {
-    try {
-      optimizeSsrStyles(config, hydrateTarget, doc, diagnostics);
-
-    } catch (e) {
-      diagnostics.push({
-        level: 'error',
-        type: 'hydrate',
-        header: 'Inline Component Styles',
-        messageText: e
-      });
-    }
+    optimizeSsrStyles(config, hydrateTarget, results);
   }
+
+  const inlinePromises: Promise<any>[] = [];
 
   if (hydrateTarget.inlineLoaderScript) {
     // remove the script to the external loader script request
     // inline the loader script at the bottom of the html
-    promises.push(inlineLoaderScript(config, compilerCtx, hydrateTarget, windowLocationPath, doc));
+    inlinePromises.push(inlineLoaderScript(config, compilerCtx, hydrateTarget, results));
   }
 
   if (hydrateTarget.inlineAssetsMaxSize > 0) {
-    promises.push(inlineExternalAssets(config, compilerCtx, hydrateTarget, windowLocationPath, doc));
-  }
-
-  if (hydrateTarget.collapseWhitespace && !config.devMode && config.logLevel !== 'debug') {
-    // collapseWhitespace is the default
-    try {
-      config.logger.debug(`optimize ${windowLocationPath}, collapse html whitespace`);
-      collapseHtmlWhitepace(doc.documentElement);
-
-    } catch (e) {
-      diagnostics.push({
-        level: 'error',
-        type: 'hydrate',
-        header: 'Reduce HTML Whitespace',
-        messageText: e
-      });
-    }
+    inlinePromises.push(inlineExternalAssets(config, compilerCtx, hydrateTarget, results));
   }
 
   // need to wait on to see if external files are inlined
-  await Promise.all(promises);
+  await Promise.all(inlinePromises);
 
   // reset for new promises
-  promises.length = 0;
+  const minifyPromises: Promise<any>[] = [];
 
   if (config.minifyCss) {
-    promises.push(minifyInlineStyles(config, compilerCtx, doc, diagnostics));
+    minifyPromises.push(minifyInlineStyles(config, compilerCtx, results));
   }
 
   if (config.minifyJs) {
-    promises.push(minifyInlineScripts(config, compilerCtx, doc, diagnostics));
+    minifyPromises.push(minifyInlineScripts(config, compilerCtx, results));
   }
 
   if (config.assetVersioning) {
-    promises.push(assetVersioning(config, compilerCtx, hydrateTarget, windowLocationPath, doc));
+    minifyPromises.push(assetVersioning(config, compilerCtx, hydrateTarget, results));
   }
 
-  await Promise.all(promises);
+  await Promise.all(minifyPromises);
 }
 
 
 export async function optimizeIndexHtml(
-  config: d.Config,
+  _config: d.Config,
   compilerCtx: d.CompilerCtx,
   hydrateTarget: d.OutputTargetHydrate,
-  windowLocationPath: string,
+  _windowLocationPath: string,
   diagnostics: d.Diagnostic[]
 ) {
   try {
@@ -116,7 +85,7 @@ export async function optimizeIndexHtml(
       const doc: HTMLDocument = null;
 
       if (doc) {
-        await optimizeHtml(config, compilerCtx, hydrateTarget, windowLocationPath, doc, diagnostics);
+        // await optimizeHtml(config, compilerCtx, hydrateTarget, windowLocationPath, doc, diagnostics);
 
         // serialize this dom back into a string
         // await compilerCtx.fs.writeFile(hydrateTarget.indexHtml, dom.serialize());

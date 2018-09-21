@@ -1,52 +1,95 @@
 import * as d from '../../declarations';
-import { pathJoin } from '../util';
+import { catchError, pathJoin } from '../util';
 
 
 export async function inlineExternalAssets(
   config: d.Config,
   compilerCtx: d.CompilerCtx,
   outputTarget: d.OutputTargetHydrate,
-  windowLocationPath: string,
-  doc: Document
+  results: d.PrerenderResults
 ) {
-  const linkElements = doc.querySelectorAll('link[href][rel="stylesheet"]') as any;
-  for (var i = 0; i < linkElements.length; i++) {
-    inlineStyle(config, compilerCtx, outputTarget, windowLocationPath, doc, linkElements[i] as any);
+  const linkElements: HTMLLinkElement[] = [];
+  const scriptElements: HTMLScriptElement[] = [];
+
+  extractLinkAndScriptElements(linkElements, scriptElements, results.document.documentElement);
+
+  const promises: Promise<any>[] = [];
+
+  for (let i = 0; i < linkElements.length; i++) {
+    promises.push(inlineStyle(config, compilerCtx, outputTarget, results, linkElements[i] as any));
   }
 
-  const scriptElements = doc.querySelectorAll('script[src]') as any;
-  for (i = 0; i < scriptElements.length; i++) {
-    await inlineScript(config, compilerCtx, outputTarget, windowLocationPath, scriptElements[i] as any);
+  for (let i = 0; i < scriptElements.length; i++) {
+    promises.push(inlineScript(config, compilerCtx, outputTarget, results, scriptElements[i] as any));
+  }
+
+  await Promise.all(promises);
+}
+
+
+function extractLinkAndScriptElements(linkElements: HTMLLinkElement[], scriptElements: HTMLScriptElement[], elm: HTMLElement) {
+  if (elm) {
+
+    if (elm.nodeName === 'SCRIPT') {
+      if (elm.hasAttribute('data-resolved-url')) {
+        scriptElements.push(elm as any);
+      }
+
+    } else if (elm.nodeName === 'LINK') {
+      if ((elm as HTMLLinkElement).rel.toLowerCase() === 'stylesheet') {
+        if (elm.hasAttribute('data-resolved-url')) {
+          linkElements.push(elm as any);
+        }
+      }
+
+    } else {
+      const children = elm.children as any;
+      if (children) {
+        for (let i = 0; i < children.length; i++) {
+          extractLinkAndScriptElements(linkElements, scriptElements, children[i]);
+        }
+      }
+    }
   }
 }
 
 
-async function inlineStyle(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetHydrate, windowLocationPath: string, doc: Document, linkElm: HTMLLinkElement) {
-  const content = await getAssetContent(config, compilerCtx, outputTarget, windowLocationPath, linkElm.href);
-  if (!content) {
-    return;
+async function inlineStyle(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetHydrate, results: d.PrerenderResults, linkElm: HTMLLinkElement) {
+  try {
+    const content = await getAssetContent(config, compilerCtx, outputTarget, results.url, linkElm.href);
+    if (!content) {
+      return;
+    }
+
+    config.logger.debug(`optimize ${results.url}, inline style: ${config.sys.url.parse(linkElm.href).pathname}`);
+
+    const styleElm = results.document.createElement('style');
+    styleElm.innerHTML = content;
+
+    linkElm.parentNode.insertBefore(styleElm, linkElm);
+    linkElm.parentNode.removeChild(linkElm);
+
+  } catch (e) {
+    catchError(results.diagnostics, e);
   }
-
-  config.logger.debug(`optimize ${windowLocationPath}, inline style: ${config.sys.url.parse(linkElm.href).pathname}`);
-
-  const styleElm = doc.createElement('style');
-  styleElm.innerHTML = content;
-
-  linkElm.parentNode.insertBefore(styleElm, linkElm);
-  linkElm.parentNode.removeChild(linkElm);
 }
 
 
-async function inlineScript(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetHydrate, windowLocationPath: string, scriptElm: HTMLScriptElement) {
-  const content = await getAssetContent(config, compilerCtx, outputTarget, windowLocationPath, scriptElm.src);
-  if (!content) {
-    return;
+async function inlineScript(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetHydrate, results: d.PrerenderResults, scriptElm: HTMLScriptElement) {
+  try {
+    const content = await getAssetContent(config, compilerCtx, outputTarget, results.url, scriptElm.src);
+    if (!content) {
+      return;
+    }
+
+    config.logger.debug(`optimize ${results.url}, inline script: ${scriptElm.src}`);
+
+    scriptElm.innerHTML = content;
+    scriptElm.removeAttribute('src');
+
+  } catch (e) {
+    catchError(results.diagnostics, e);
   }
-
-  config.logger.debug(`optimize ${windowLocationPath}, inline script: ${scriptElm.src}`);
-
-  scriptElm.innerHTML = content;
-  scriptElm.removeAttribute('src');
 }
 
 

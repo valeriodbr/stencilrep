@@ -1,14 +1,15 @@
 import * as d from '../../declarations';
+import { catchError } from '../util';
 import { minifyJs } from '../minifier';
 import { minifyStyle } from '../style/minify-style';
 
 
-export async function minifyInlineScripts(config: d.Config, compilerCtx: d.CompilerCtx, doc: Document, diagnostics: d.Diagnostic[]) {
-  const scripts = doc.querySelectorAll('script');
+export async function minifyInlineScripts(config: d.Config, compilerCtx: d.CompilerCtx, results: d.PrerenderResults) {
+  const scripts = results.document.querySelectorAll('script');
   const promises: Promise<any>[] = [];
 
   for (let i = 0; i < scripts.length; i++) {
-    promises.push(minifyInlineScript(config, compilerCtx, diagnostics, scripts[i]));
+    promises.push(minifyInlineScript(config, compilerCtx, results.diagnostics, scripts[i]));
   }
 
   await Promise.all(promises);
@@ -62,15 +63,20 @@ export async function minifyInlineScript(config: d.Config, compilerCtx: d.Compil
 
 
 
-export async function minifyInlineStyles(config: d.Config, compilerCtx: d.CompilerCtx, doc: Document, diagnostics: d.Diagnostic[]) {
-  const styles = doc.querySelectorAll('style');
-  const promises: Promise<any>[] = [];
+export async function minifyInlineStyles(config: d.Config, compilerCtx: d.CompilerCtx, results: d.PrerenderResults) {
+  try {
+    const styles = results.document.querySelectorAll('style');
+    const promises: Promise<any>[] = [];
 
-  for (let i = 0; i < styles.length; i++) {
-    promises.push(minifyInlineStyle(config, compilerCtx, diagnostics, styles[i]));
+    for (let i = 0; i < styles.length; i++) {
+      promises.push(minifyInlineStyle(config, compilerCtx, results.diagnostics, styles[i]));
+    }
+
+    await Promise.all(promises);
+
+  } catch (e) {
+    catchError(results.diagnostics, e);
   }
-
-  await Promise.all(promises);
 }
 
 

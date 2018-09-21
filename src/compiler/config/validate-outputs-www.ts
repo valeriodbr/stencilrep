@@ -47,6 +47,19 @@ function validateOutputTarget(config: d.Config, outputTarget: d.OutputTargetWww)
   if (typeof outputTarget.appBuild !== 'boolean') {
     outputTarget.appBuild = true;
   }
+
+  if (outputTarget.pageAnalysis === true) {
+    outputTarget.pageAnalysis = {};
+  }
+
+  if (outputTarget.pageAnalysis) {
+    if (typeof outputTarget.pageAnalysis.dir !== 'string') {
+      outputTarget.pageAnalysis.dir = DEFAULT_PAGE_ANALYSIS_DIR;
+    }
+    if (!config.sys.path.isAbsolute(outputTarget.pageAnalysis.dir)) {
+      outputTarget.pageAnalysis.dir = config.sys.path.join(config.rootDir, outputTarget.pageAnalysis.dir);
+    }
+  }
 }
 
 
@@ -54,3 +67,4 @@ const DEFAULT_DIR = 'www';
 const DEFAULT_INDEX_HTML = 'index.html';
 const DEFAULT_BUILD_DIR = 'build';
 const DEFAULT_EMPTY_DIR = true;
+const DEFAULT_PAGE_ANALYSIS_DIR = 'page-analysis';
