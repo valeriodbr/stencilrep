@@ -3,14 +3,14 @@ import { buildError, catchError, pathJoin } from '../util';
 import { serializeNodeToHtml } from '@stencil/core/mock-doc';
 
 
-export async function writePrerenderResults(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
+export async function writePrerenderResults(compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults, filePath: string) {
   try {
     results.html = serializeNodeToHtml(results.document as any, {
       pretty: outputTarget.prettyHtml
     });
 
     for (let i = 0; i < 5; i++) {
-      const success = await writePrerenderContent(config, compilerCtx, buildCtx, outputTarget, results);
+      const success = await writePrerenderContent(compilerCtx, buildCtx, results, filePath);
       if (success) {
         // we wrote the prerendered content with no issues :)
         break;
@@ -26,26 +26,14 @@ export async function writePrerenderResults(config: d.Config, compilerCtx: d.Com
 }
 
 
-async function writePrerenderContent(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
+async function writePrerenderContent(compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, results: d.PrerenderResults, filePath: string) {
   let success = false;
 
   try {
-    // create the full path where this will be saved
-    const filePath = getWritePathFromUrl(config, outputTarget, results.pathname);
-
     // add the prerender html content it to our collection of
     // files that need to be saved when we're all ready
     // do NOT use the cache here, best to not use up that memory
     await compilerCtx.fs.writeFile(filePath, results.html, { useCache: false });
-
-    if (outputTarget.pageAnalysis && outputTarget.pageAnalysis.dir) {
-      results.metrics.htmlBytes = results.html.length;
-      await writePageAnalysis(config, compilerCtx, outputTarget, results);
-    }
-
-    // write the files now
-    // and since we're not using cache it'll free up memory
-    await compilerCtx.fs.commit();
 
     // sweet, all good
     success = true;
@@ -61,7 +49,7 @@ async function writePrerenderContent(config: d.Config, compilerCtx: d.CompilerCt
 }
 
 
-async function writePageAnalysis(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
+export async function writePageAnalysis(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
   const fileName = encodeURIComponent(results.path) + '.json';
   const filePath = config.sys.path.join(outputTarget.pageAnalysis.dir, fileName);
 
@@ -110,5 +98,5 @@ export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTarg
     filePath = pathJoin(config, dir, `index.html`);
   }
 
-  return filePath;
+  return filePath + '.prerendererd';
 }

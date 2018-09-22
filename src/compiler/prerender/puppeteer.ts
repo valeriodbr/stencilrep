@@ -4,25 +4,12 @@ import { catchError } from '../util';
 import { parseHtmlToDocument } from '@stencil/core/mock-doc';
 
 
-export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, origin: string, path: string) {
-  const results: d.PrerenderResults = {
-    url: origin + path,
-    host: null,
-    path: path,
-    pathname: null,
-    search: null,
-    hash: null,
-    html: null,
-    document: null,
-    anchorPaths: [],
-    diagnostics: [],
-    pageErrors: [],
-    requests: [],
-  };
-
+export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, results: d.PrerenderResults) {
   try {
     // start up a new page
+    const newPageTimespan = config.logger.createTimeSpan(`new page started: ${results.url}`, true);
     const page = await browser.newPage();
+    newPageTimespan.finish(`new page finished: ${results.url}`);
 
     const appLoaded = createAppLoadListener(page);
 
@@ -37,9 +24,12 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
       ]);
     }
 
+    const gotoTimespan = config.logger.createTimeSpan(`goto started: ${results.url}`, true);
     await page.goto(results.url, {
-      waitUntil: 'load'
+      waitUntil: 'load',
+      timeout: 15000
     });
+    gotoTimespan.finish(`goto finished: ${results.url}`);
 
     await appLoaded;
 
@@ -69,21 +59,23 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
       };
     }
 
+    const processPageTimespan = config.logger.createTimeSpan(`process page started: ${results.url}`, true);
     await processPage(outputTarget, page, results);
+    processPageTimespan.finish(`process page finished: ${results.url}`);
 
     await page.close();
 
   } catch (e) {
     catchError(results.diagnostics, e);
   }
-
-  return results;
 }
 
 
 async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page, results: d.PrerenderResults) {
   const pageUpdateConfig: PageUpdateConfig = {
-    collapseWhitespace: (outputTarget.collapseWhitespace !== false)
+    collapseWhitespace: (outputTarget.collapseWhitespace !== false),
+    pathQuery: outputTarget.prerenderPathQuery,
+    pathHash: outputTarget.prerenderPathHash
   };
 
   const extractData: ExtractData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
@@ -95,15 +87,39 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
     const extractData: ExtractData = {
       html: '',
       url: url.href,
-      host: url.host,
-      path: url.pathname + url.search + url.hash,
+      path: url.pathname,
       pathname: url.pathname,
       search: url.search,
       hash: url.hash,
       stencilAppLoadDuration: (window as StencilWindow).stencilAppLoadDuration
     };
 
+    if (pageUpdateConfig.pathQuery) {
+      extractData.path += pageUpdateConfig.pathQuery;
+    }
+
+    if (pageUpdateConfig.pathHash) {
+      extractData.path += pageUpdateConfig.pathHash;
+    }
+
     const WHITESPACE_SENSITIVE_TAGS = ['PRE', 'SCRIPT', 'STYLE', 'TEXTAREA'];
+
+    function getResolvedUrl(elm: Node, href: string) {
+      if (href) {
+        const url = new URL(href);
+
+        if (url.host === location.host) {
+          let rtn = url.pathname;
+          if (pageUpdateConfig.pathQuery) {
+            rtn += pageUpdateConfig.pathQuery;
+          }
+          if (pageUpdateConfig.pathHash) {
+            rtn += pageUpdateConfig.pathHash;
+          }
+          (elm as HTMLScriptElement).setAttribute('data-resolved-path', rtn);
+        }
+      }
+    }
 
     function optimize(node: Node) {
       if (!node) {
@@ -119,31 +135,13 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
         const tagName = (node as HTMLAnchorElement).nodeName.toLowerCase();
 
         if (tagName === 'a') {
-          if ((node as HTMLAnchorElement).href) {
-            const url = new URL((node as HTMLAnchorElement).href);
-
-            if (url.host === location.host) {
-              (node as HTMLScriptElement).setAttribute('data-resolved-url', url.pathname + url.search + url.hash);
-            }
-          }
+          getResolvedUrl(node, (node as HTMLAnchorElement).href);
 
         } else if (tagName === 'script') {
-          if ((node as HTMLScriptElement).src) {
-            const url = new URL((node as HTMLScriptElement).src);
+          getResolvedUrl(node, (node as HTMLScriptElement).src);
 
-            if (url.host === location.host) {
-              (node as HTMLScriptElement).setAttribute('data-resolved-url', url.pathname + url.search + url.hash);
-            }
-          }
-
-        } else if (tagName === 'link') {
-          if ((node as HTMLLinkElement).rel.toLowerCase() === 'stylesheet' && (node as HTMLLinkElement).href) {
-            const url = new URL((node as HTMLLinkElement).href);
-
-            if (url.host === location.host) {
-              (node as HTMLLinkElement).setAttribute('data-resolved-url', url.pathname + url.search + url.hash);
-            }
-          }
+        } else if (tagName === 'link' && (node as HTMLLinkElement).rel.toLowerCase() === 'stylesheet') {
+          getResolvedUrl(node, (node as HTMLLinkElement).href);
         }
 
         if ((node as HTMLElement).getAttribute('class') === '') {
@@ -226,7 +224,6 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
   results.document = parseHtmlToDocument(extractData.html);
 
   results.url = extractData.url;
-  results.host = extractData.host;
   results.pathname = extractData.pathname;
   results.search = extractData.search;
   results.hash = extractData.hash;
@@ -256,6 +253,8 @@ function calulateCoverage(entries: puppeteer.CoverageEntry[]) {
 
 interface PageUpdateConfig {
   collapseWhitespace: boolean;
+  pathQuery?: boolean;
+  pathHash?: boolean;
 }
 
 
@@ -269,7 +268,6 @@ interface ExtractData {
   html: string;
   stencilAppLoadDuration: number;
   url: string;
-  host: string;
   path: string;
   pathname: string;
   search: string;
@@ -284,11 +282,13 @@ async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetW
     let url = interceptedRequest.url();
     const resourceType = interceptedRequest.resourceType();
 
-    results.requests.push({
-      url: url,
-      type: resourceType,
-      status: null
-    });
+    if (resourceType !== 'document') {
+      results.requests.push({
+        url: url,
+        type: resourceType,
+        status: null
+      });
+    }
 
     const parsedUrl = config.sys.url.parse(url);
 
@@ -323,27 +323,27 @@ function isCoreScript(buildCtx: d.BuildCtx, parsedUrl: d.Url, resourceType: pupp
 
 function shouldAbort(outputTargets: d.OutputTargetWww, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
   if (resourceType === 'image') {
-    return false;
+    return true;
   }
 
   if (resourceType === 'media') {
-    return false;
+    return true;
   }
 
   if (resourceType === 'font') {
-    return false;
+    return true;
   }
 
   if (resourceType === 'manifest') {
-    return false;
+    return true;
   }
 
   if (resourceType === 'websocket') {
-    return false;
+    return true;
   }
 
   if (parsedUrl.path.includes('data:image')) {
-    return false;
+    return true;
   }
 
   return outputTargets.prerenderAbortRequests.some(abortReq => {
@@ -357,8 +357,20 @@ function shouldAbort(outputTargets: d.OutputTargetWww, parsedUrl: d.Url, resourc
 
 
 function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
-  page.on('pageerror', err => {
-    results.pageErrors.push(err);
+  page.on('pageerror', (err: any) => {
+    if (err) {
+      if (typeof err === 'string') {
+        results.pageErrors.push({
+          message: err
+        });
+
+      } else if (err.message) {
+        results.pageErrors.push({
+          message: err.message,
+          stack: err.stack
+        });
+      }
+    }
   });
 
   page.on('error', err => {
@@ -373,6 +385,9 @@ function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
   });
 
   page.on('requestfinished', rsp => {
+    if (rsp.resourceType() === 'document') {
+      return;
+    }
     const url = results.requests.find(r => r.url === rsp.url());
     if (url) {
       url.status = 'success';

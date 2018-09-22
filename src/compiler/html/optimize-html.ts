@@ -1,6 +1,6 @@
 import * as d from '../../declarations';
 import { assetVersioning } from '../asset-versioning/asset-versioning';
-import { buildError, catchError } from '../util';
+import { catchError } from '../util';
 import { inlineExternalAssets } from './inline-external-assets';
 import { inlineLoaderScript } from './inline-loader-script';
 import { minifyInlineScripts, minifyInlineStyles } from './minify-inline-content';
@@ -14,20 +14,10 @@ export async function optimizeHtml(
   hydrateTarget: d.OutputTargetHydrate,
   results: d.PrerenderResults
 ) {
-  if (!results.document) {
-    const diagnostic = buildError(results.diagnostics);
-    diagnostic.type = 'prerender';
-    diagnostic.header = `Invalid document`;
-    diagnostic.messageText = `Prerendering was unable to parse document`;
-    return;
-  }
-
-  if (hydrateTarget.hydrateComponents) {
-    results.document.documentElement.setAttribute(
-      'data-prerendered',
-      (typeof hydrateTarget.timestamp === 'string' ? hydrateTarget.timestamp : '')
-    );
-  }
+  results.document.documentElement.setAttribute(
+    'data-prerendered',
+    (typeof hydrateTarget.timestamp === 'string' ? hydrateTarget.timestamp : '')
+  );
 
   if (hydrateTarget.canonicalLink) {
     updateCanonicalLink(config, results);

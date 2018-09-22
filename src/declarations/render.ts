@@ -18,7 +18,6 @@ export interface RenderOptions {
 
 export interface PrerenderResults extends PageAnalysis {
   url: string;
-  host: string;
   html: string;
   document: Document;
 }
@@ -31,7 +30,7 @@ export interface PageAnalysis {
   hash: string;
   anchorPaths: string[];
   diagnostics: d.Diagnostic[];
-  pageErrors: string[];
+  pageErrors: { message: string; stack?: string; }[];
   requests: PageRequest[];
   metrics?: PageMetrics;
   coverage?: PageCoverage;
@@ -39,7 +38,8 @@ export interface PageAnalysis {
 
 
 export interface PageRequest {
-  url: string;
+  url?: string;
+  path?: string;
   type: string;
   status: string;
 }

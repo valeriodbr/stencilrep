@@ -143,6 +143,8 @@ export function validateConfig(config: d.Config, setEnvVariables?: boolean) {
   validateRollupConfig(config);
   validateTesting(config);
 
+  setNumberConfig(config, 'maxConcurrentPrerender', null, MAX_CONCURRENT_PRERENDER);
+
   return config;
 }
 
@@ -156,6 +158,7 @@ const DEFAULT_DEV_MODE = false;
 const DEFAULT_HASHED_FILENAME_LENTH = 8;
 const MIN_HASHED_FILENAME_LENTH = 4;
 const MAX_HASHED_FILENAME_LENTH = 32;
+const MAX_CONCURRENT_PRERENDER = 12;
 const DEFAULT_INCLUDES = ['**/*.ts', '**/*.tsx'];
 const DEFAULT_EXCLUDES = ['**/*.+(spec|e2e).*'];
 const DEFAULT_WATCH_IGNORED_REGEX = /(?:^|[\\\/])(\.(?!\.)[^\\\/]+)$/i;

@@ -40,7 +40,6 @@ export function validatePrerender(config: d.Config, outputTarget: d.OutputTarget
   setArrayConfig(outputTarget, 'prerenderLocations', defaults.prerenderLocations);
   setBooleanConfig(outputTarget, 'prerenderPathHash', null, defaults.prerenderPathHash);
   setBooleanConfig(outputTarget, 'prerenderPathQuery', null, defaults.prerenderPathQuery);
-  setNumberConfig(outputTarget, 'prerenderMaxConcurrent', null, defaults.prerenderMaxConcurrent);
   setBooleanConfig(outputTarget, 'removeUnusedStyles', null, defaults.removeUnusedStyles);
 
   defaults.baseUrl = normalizePath(defaults.baseUrl);
@@ -87,7 +86,6 @@ const FULL_PRERENDER_DEFAULTS: d.OutputTargetWww = {
   prerenderUrlCrawl: true,
   prerenderPathHash: false,
   prerenderPathQuery: false,
-  prerenderMaxConcurrent: 12,
   removeUnusedStyles: true
 };
 
@@ -105,7 +103,6 @@ const SSR_DEFAULTS: d.OutputTargetWww = {
   prerenderUrlCrawl: false,
   prerenderPathHash: false,
   prerenderPathQuery: false,
-  prerenderMaxConcurrent: 0,
   removeUnusedStyles: false
 };
 
@@ -123,7 +120,6 @@ const PROD_NON_HYDRATE_DEFAULTS: d.OutputTargetWww = {
   prerenderUrlCrawl: false,
   prerenderPathHash: false,
   prerenderPathQuery: false,
-  prerenderMaxConcurrent: 0,
   removeUnusedStyles: false
 };
 
@@ -141,6 +137,5 @@ const DEV_MODE_DEFAULTS: d.OutputTargetWww = {
   prerenderUrlCrawl: false,
   prerenderPathHash: false,
   prerenderPathQuery: false,
-  prerenderMaxConcurrent: 0,
   removeUnusedStyles: false
 };

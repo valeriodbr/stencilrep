@@ -104,13 +104,6 @@ export interface OutputTargetWww extends OutputTargetBase {
   prettyHtml?: boolean;
 
   /**
-   * Maximum number of pages to be prerendering at one time. The optimal number
-   * varies between machines and any feedback regarding the number that best
-   * works for your setup would help. Default: `12`
-   */
-  prerenderMaxConcurrent?: number;
-
-  /**
    * Keep hashes in the URL while prerendering. Default: `false`
    */
   prerenderPathHash?: boolean;

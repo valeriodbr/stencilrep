@@ -1,34 +1,27 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
 import { generateHostConfig } from './host-config';
+// import { prepareIndexHtml } from './prerender-index-html';
 import { PrerenderCtx } from './prerender-ctx';
 
 
 export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, _entryModules: d.EntryModule[]) {
   // get output targets that are www and have an index.html file
   const outputTargets = (config.outputTargets as d.OutputTargetWww[]).filter(o => {
-    return o.type === 'www' && o.indexHtml;
+    return o.type === 'www' && o.indexHtml && o.prerenderLocations && o.prerenderLocations.length > 0;
   });
-
-  if (outputTargets.length === 0) {
-    // no output targets want to prerender
-    return;
-  }
 
   // kick off the prerendering for each output target (probably only 1, but who knows)
   for (const outputTarget of outputTargets) {
-    if (outputTarget.hydrateComponents && outputTarget.prerenderLocations && outputTarget.prerenderLocations.length > 0) {
+    // create a context object to hold all things useful during prerendering
+    const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
 
-      // create a context object to hold all things useful during prerendering
-      const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
+    await prerenderCtx.startBrowser();
 
-      await prerenderCtx.startBrowser();
+    await prerenderOutputTarget(prerenderCtx);
 
-      await prerenderOutputTarget(prerenderCtx);
-
-      // shut it down!
-      await prerenderCtx.destroy();
-    }
+    // shut it down!
+    await prerenderCtx.destroy();
   }
 }
 
@@ -50,11 +43,14 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
   const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`);
 
   if (prerenderCtx.outputTarget.pageAnalysis) {
+    const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`empty ${prerenderCtx.outputTarget.pageAnalysis.dir} started`, true);
     await prerenderCtx.compilerCtx.fs.emptyDir(prerenderCtx.outputTarget.pageAnalysis.dir);
     await prerenderCtx.compilerCtx.fs.commit();
+    timeSpan.finish(`empty pageAnalysis finished`);
   }
 
   try {
+    // const indexHtml = await prepareIndexHtml();
     await prerenderCtx.prerenderAll(pathsQueue);
 
     // prerendering has finished

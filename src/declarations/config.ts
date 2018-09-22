@@ -20,6 +20,16 @@ export interface StencilConfig {
   bundles?: ConfigBundle[];
 
   /**
+   * In order to speed up build and re-build times, the compiler is able to cache output from
+   * previous builds. If `cacheDir` is a relative path, it will be relative to the location of
+   * the config file, otherwise it should be an absolute path. Note that the `cacheDir` should
+   * also be added to the `.gitignore` file since the cached files shouldn't be committed to
+   * a repository. Another tip is to exclude this directory from any search indexing which
+   * and IDE commonly does for local directories. Default: `.stencil`
+   */
+  cacheDir?: string;
+
+  /**
    * The copy config is an array of objects that defines any files or folders that should
    * be copied over to the build directory.
    *
@@ -46,14 +56,17 @@ export interface StencilConfig {
    */
   excludeSrc?: string[];
 
+  globalScript?: string;
+
   /**
    * Stencil is traditionally used to compile many components into an app,
    * and each component comes with its own compartmentalized styles.
-   * However, it's still common to have styles which should be "global" across all components and the website.
-   * A global CSS file is often useful to set CSS Variables.
+   * However, it's still common to have styles which should be "global"
+   * across all components and the website. A global CSS file is often useful
+   * to set CSS Variables.
    *
-   * Additonally, the globalStyle config is can be used to precompile styles with Sass, PostCss, etc.
-   * Below is an example folder structure containing a webapp's global sass file, named app.css.
+   * Additonally, the `globalStyle` config is can be used to precompile styles
+   * with Sass, PostCss, etc.
    */
   globalStyle?: string;
 
@@ -72,6 +85,24 @@ export interface StencilConfig {
    * content delivery networks (CDNs) and heavily caching files for faster apps.
    */
   hashFileNames?: boolean;
+
+  /**
+   * Maximum number of pages to be prerendering at one time. The optimal number
+   * varies between machines and any research  and feedback regarding what works
+   * best for your setup would be appreciated. Default: `12`
+   */
+  maxConcurrentPrerender?: number;
+
+  /**
+   * Maximum number of tasks to be actively running on one worker. Default: `2`
+   */
+  maxConcurrentTasksPerWorker?: number;
+
+  /**
+   * Maximum number of workers node should fork during the build. Defaults to use
+   * the current systems's number of cpus. Default: `os.cpus().length`
+   */
+  maxConcurrentWorkers?: number;
 
   /**
    * The namespace config is a string representing a namespace for the app.
@@ -103,13 +134,17 @@ export interface StencilConfig {
    */
   srcDir?: string;
 
+  /**
+   * The main index file which acts as the entry to the app. Default: `index.html`
+   */
+  srcIndexHtml?: string;
+
   assetVersioning?: ConfigAssetVersioning;
   autoprefixCss?: boolean | any;
   buildEs5?: boolean;
   buildEsm?: boolean;
   buildScoped?: boolean;
   buildLogFilePath?: string;
-  cacheDir?: string;
   commonjs?: BundlingConfig;
   nodeResolve?: NodeResolveConfig;
   rollupConfig?: RollupConfig;
@@ -117,16 +152,12 @@ export interface StencilConfig {
   devMode?: boolean;
   devServer?: d.DevServerConfig;
   enableCacheStats?: boolean;
-  globalScript?: string;
   hydratedCssClass?: string;
   includeSrc?: string[];
   logger?: d.Logger;
-  maxConcurrentWorkers?: number;
-  maxConcurrentTasksPerWorker?: number;
   minifyCss?: boolean;
   minifyJs?: boolean;
   preamble?: string;
-  srcIndexHtml?: string;
   sys?: d.StencilSystem;
   testing?: d.TestingConfig;
   tsconfig?: string;

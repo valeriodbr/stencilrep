@@ -5,12 +5,12 @@ export function extractResolvedAnchorUrls(anchorUrls: string[], elm: HTMLElement
   if (elm) {
 
     if (elm.nodeName === 'A') {
-      const resolvedAnchorUrl = elm.getAttribute('data-resolved-url');
+      const resolvedAnchorUrl = elm.getAttribute('data-resolved-path');
       if (resolvedAnchorUrl) {
         if (!anchorUrls.includes(resolvedAnchorUrl)) {
           anchorUrls.push(resolvedAnchorUrl);
         }
-        elm.removeAttribute('data-resolved-url');
+        elm.removeAttribute('data-resolved-path');
       }
     }
 

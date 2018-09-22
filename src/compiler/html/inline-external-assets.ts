@@ -31,18 +31,18 @@ function extractLinkAndScriptElements(linkElements: HTMLLinkElement[], scriptEle
   if (elm) {
 
     if (elm.nodeName === 'SCRIPT') {
-      const resolvedUrl = elm.getAttribute('data-resolved-url');
+      const resolvedUrl = elm.getAttribute('data-resolved-path');
       if (resolvedUrl) {
         (elm as any).__resolvedUrl = resolvedUrl;
-        elm.removeAttribute('data-resolved-url');
+        elm.removeAttribute('data-resolved-path');
         scriptElements.push(elm as any);
       }
 
     } else if (elm.nodeName === 'LINK') {
-      const resolvedUrl = elm.getAttribute('data-resolved-url');
+      const resolvedUrl = elm.getAttribute('data-resolved-path');
       if (resolvedUrl) {
         (elm as any).__resolvedUrl = resolvedUrl;
-        elm.removeAttribute('data-resolved-url');
+        elm.removeAttribute('data-resolved-path');
         linkElements.push(elm as any);
       }
 
