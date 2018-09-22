@@ -18,16 +18,18 @@ export interface RenderOptions {
 
 export interface PrerenderResults extends PageAnalysis {
   url: string;
+  host: string;
   html: string;
   document: Document;
 }
 
 
 export interface PageAnalysis {
+  path: string;
   pathname: string;
   search: string;
   hash: string;
-  anchorUrls: string[];
+  anchorPaths: string[];
   diagnostics: d.Diagnostic[];
   pageErrors: string[];
   requests: PageRequest[];

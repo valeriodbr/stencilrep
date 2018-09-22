@@ -1,24 +1,27 @@
 import * as d from '../../declarations';
+import { catchError, hasError } from '../util';
 import { closePuppeteerBrowser, ensurePuppeteer, prerender, startPuppeteerBrowser } from './puppeteer';
-import { extractResolvedAnchorUrls, getHost, queueUrlsToPrerender } from './prerender-utils';
+import { extractResolvedAnchorUrls, queuePathForPrerender } from './prerender-utils';
 import { optimizeHtml } from '../html/optimize-html';
 import { writePrerenderResults } from './prerender-write';
-import { hasError } from '../util';
 
 
 export class PrerenderCtx {
   private browser: any = null;
-  private host: string = null;
+  private origin: string;
+  private prerenderingDone: Function;
   queue: string[] = [];
   processing = new Set();
   completed = new Set();
 
   constructor(public config: d.Config, public compilerCtx: d.CompilerCtx, public buildCtx: d.BuildCtx, public outputTarget: d.OutputTargetWww) {
+    this.origin = config.devServer.browserUrl;
+    if (this.origin.endsWith('/')) {
+      this.origin = this.origin.substring(0, this.origin.length - 1);
+    }
   }
 
   async startBrowser() {
-    this.host = getHost(this.config, this.outputTarget);
-
     // let's make sure they have what we need installed
     await ensurePuppeteer(this.config);
 
@@ -26,26 +29,32 @@ export class PrerenderCtx {
     this.browser = await startPuppeteerBrowser(this.config);
   }
 
-  async prerenderAll(urls: string[]) {
+  async prerenderAll(paths: string[]) {
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return Promise.resolve();
+    }
+
     // promise resolves when all locations have been prerendered
     await new Promise(prerenderingDone => {
-      this.compilerCtx.events.subscribe('prerenderedLocation', this.drainQueue.bind(this, prerenderingDone));
+      this.prerenderingDone = prerenderingDone;
 
-      // add these urls to our array of pending urls
-      this.queue.push(...urls);
+      this.compilerCtx.events.subscribe('prerenderedLocation', this.drainQueue.bind(this));
+
+      // add these paths to our array of pending paths
+      this.queue.push(...paths);
 
       // let's kick it off
-      setTimeout(() => {
-        this.next();
-      });
+      this.next();
     });
   }
 
   next() {
-    this.compilerCtx.events.emit('prerenderedLocation');
+    setTimeout(() => {
+      this.compilerCtx.events.emit('prerenderedLocation');
+    });
   }
 
-  drainQueue(prerenderingDone: Function) {
+  drainQueue() {
     // listen for when a location has finished prerendering
     // check to see if everything in the queue has been completed
     const allCompleted = (this.processing.size === 0 && this.queue.length === 0);
@@ -53,7 +62,7 @@ export class PrerenderCtx {
       // we're not actively processing anything
       // and there aren't anymore urls in the queue to be prerendered
       // so looks like our job here is done, good work team
-      prerenderingDone();
+      this.prerenderingDone();
       return;
     }
 
@@ -65,58 +74,67 @@ export class PrerenderCtx {
         return;
       }
 
-      const prerenderUrl = this.queue.shift();
-      if (!prerenderUrl) {
-        // no pending locations in the queue, let's chill out
+      const path = this.queue.shift();
+      if (!path) {
+        // no pending paths in the queue, let's chill out
         // there's probably some in the processing still being worked on
         return;
       }
 
       // move this url to processing
-      this.processing.add(prerenderUrl);
+      this.processing.add(path);
 
       // begin the async prerendering operation for this location
-      this.prerender(prerenderUrl);
+      this.prerender(path);
     }
   }
 
-  async prerender(url: string) {
-    const msg = this.outputTarget.hydrateComponents ? 'prerender' : 'optimize html';
+  async prerender(path: string) {
+    const start = Date.now();
 
-    const timeSpan = this.buildCtx.createTimeSpan(`${msg}, started: ${url}`);
+    try {
+      // prerender this url and wait on the results
+      const results = await prerender(this.config, this.outputTarget, this.buildCtx, this.browser, this.origin, path);
 
-    // prerender this url and wait on the results
-    const results = await prerender(this.config, this.outputTarget, this.buildCtx, this.browser, url);
+      // now that we've prerendered the content
+      // let's optimize the document node even further
+      await optimizeHtml(this.config, this.compilerCtx, this.outputTarget, results);
 
-    // now that we've prerendered the content
-    // let's optimize the document node even further
-    await optimizeHtml(this.config, this.compilerCtx, this.outputTarget, results);
+      // we're done processing now
+      this.processing.delete(path);
 
-    // we're done processing now
-    this.processing.delete(url);
+      // consider it completed
+      this.completed.add(path);
 
-    // consider it completed
-    this.completed.add(url);
+      this.buildCtx.diagnostics.push(...results.diagnostics);
 
-    this.buildCtx.diagnostics.push(...results.diagnostics);
+      if (!hasError(results.diagnostics)) {
+        // get all of the resolved anchor urls to continue to crawll
+        extractResolvedAnchorUrls(results.anchorPaths, results.document.body);
 
-    if (!hasError(results.diagnostics)) {
-      // get all of the resolved anchor urls to continue to crawll
-      extractResolvedAnchorUrls(results.anchorUrls, results.document.body);
+        // no errors, write out the results and modify the html as needed
+        await writePrerenderResults(this.config, this.compilerCtx, this.buildCtx, this.outputTarget, results);
 
-      // no errors, write out the results and modify the html as needed
-      await writePrerenderResults(this.config, this.compilerCtx, this.buildCtx, this.outputTarget, results);
-
-      if (this.outputTarget.prerenderUrlCrawl) {
-        // we do want to keep crawling urls
-        // add any urls we found to the queue to be prerendered still
-        results.anchorUrls.forEach(anchorUrl => {
-          queueUrlsToPrerender(this.config, this.outputTarget, this.host, this.queue, this.processing, this.completed, anchorUrl);
-        });
+        if (this.outputTarget.prerenderUrlCrawl) {
+          // we do want to keep crawling urls
+          // add any urls we found to the queue to be prerendered still
+          results.anchorPaths.forEach(anchorPath => {
+            try {
+              queuePathForPrerender(this.config, this.outputTarget, this.queue, this.processing, this.completed, anchorPath);
+            } catch (e) {
+              catchError(results.diagnostics, e);
+            }
+          });
+        }
       }
-    }
 
-    timeSpan.finish(`${msg}, finished: ${url}`);
+      logFinished(this.config.logger, start, path);
+
+    } catch (e) {
+      this.processing.delete(path);
+      this.completed.add(path);
+      catchError(this.buildCtx.diagnostics, e);
+    }
 
     // trigger to the queue we're all done and ready for the next one
     this.next();
@@ -131,4 +149,24 @@ export class PrerenderCtx {
     this.buildCtx = null;
   }
 
+}
+
+
+function logFinished(logger: d.Logger, start: number, path: string) {
+  const duration = Date.now() - start;
+  let time: string;
+
+  if (duration > 1000) {
+    time = 'in ' + (duration / 1000).toFixed(2) + ' s';
+
+  } else {
+    const ms = parseFloat((duration).toFixed(3));
+    if (ms > 0) {
+      time = 'in ' + duration + ' ms';
+    } else {
+      time = 'in less than 1 ms';
+    }
+  }
+
+  logger.info(`prerendered: ${path} ${logger.dim(time)}`);
 }

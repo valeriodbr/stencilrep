@@ -18,10 +18,12 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
   // kick off the prerendering for each output target (probably only 1, but who knows)
   for (const outputTarget of outputTargets) {
     if (outputTarget.hydrateComponents && outputTarget.prerenderLocations && outputTarget.prerenderLocations.length > 0) {
+
       // create a context object to hold all things useful during prerendering
       const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
 
       await prerenderCtx.startBrowser();
+
       await prerenderOutputTarget(prerenderCtx);
 
       // shut it down!
@@ -33,9 +35,11 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
 
 async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
   // get the prerender urls queued up
-  const prerenderUrlsQueue = getPrerenderUrlsQueue(prerenderCtx.config, prerenderCtx.outputTarget);
+  const pathsQueue = prerenderCtx.outputTarget.prerenderLocations.map(prerenderLocation => {
+    return prerenderLocation.path;
+  }).filter(path => path.startsWith('/'));
 
-  if (!prerenderUrlsQueue.length) {
+  if (!pathsQueue.length) {
     const d = buildWarn(prerenderCtx.buildCtx.diagnostics);
     d.messageText = `No urls found in the prerender config`;
     return;
@@ -43,10 +47,15 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
 
   // let's do this!!!
   // keep track of how long the entire build process takes
-  const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`, !prerenderCtx.outputTarget.hydrateComponents);
+  const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`);
+
+  if (prerenderCtx.outputTarget.pageAnalysis) {
+    await prerenderCtx.compilerCtx.fs.emptyDir(prerenderCtx.outputTarget.pageAnalysis.dir);
+    await prerenderCtx.compilerCtx.fs.commit();
+  }
 
   try {
-    await prerenderCtx.prerenderAll(prerenderUrlsQueue);
+    await prerenderCtx.prerenderAll(pathsQueue);
 
     // prerendering has finished
     // let's build a host config from the data
@@ -63,16 +72,3 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
     timeSpan.finish(`prerendered urls: ${prerenderCtx.completed.size}`);
   }
 }
-
-
-function getPrerenderUrlsQueue(config: d.Config, outputTarget: d.OutputTargetWww) {
-  let domain = config.devServer.browserUrl;
-  if (domain.endsWith('/')) {
-    domain = domain.substring(0, domain.length - 1);
-  }
-
-  return outputTarget.prerenderLocations.map(prerenderLocation => {
-    return domain + prerenderLocation.path;
-  });
-}
-

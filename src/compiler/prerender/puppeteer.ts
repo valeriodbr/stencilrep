@@ -4,15 +4,17 @@ import { catchError } from '../util';
 import { parseHtmlToDocument } from '@stencil/core/mock-doc';
 
 
-export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, url: string) {
+export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, origin: string, path: string) {
   const results: d.PrerenderResults = {
-    url: url,
+    url: origin + path,
+    host: null,
+    path: path,
     pathname: null,
     search: null,
     hash: null,
     html: null,
     document: null,
-    anchorUrls: [],
+    anchorPaths: [],
     diagnostics: [],
     pageErrors: [],
     requests: [],
@@ -35,7 +37,7 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
       ]);
     }
 
-    await page.goto(url, {
+    await page.goto(results.url, {
       waitUntil: 'load'
     });
 
@@ -81,11 +83,10 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
 
 async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page, results: d.PrerenderResults) {
   const pageUpdateConfig: PageUpdateConfig = {
-    collapseWhitespace: (outputTarget.collapseWhitespace !== false),
-    removeHtmlComments: (outputTarget.removeHtmlComments !== false)
+    collapseWhitespace: (outputTarget.collapseWhitespace !== false)
   };
 
-  const extractData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
+  const extractData: ExtractData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
     // BROWSER CONTEXT
 
     const url = new URL(location.href);
@@ -94,6 +95,8 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
     const extractData: ExtractData = {
       html: '',
       url: url.href,
+      host: url.host,
+      path: url.pathname + url.search + url.hash,
       pathname: url.pathname,
       search: url.search,
       hash: url.hash,
@@ -117,17 +120,29 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
 
         if (tagName === 'a') {
           if ((node as HTMLAnchorElement).href) {
-            (node as HTMLElement).setAttribute('data-resolved-url', (node as HTMLAnchorElement).href);
+            const url = new URL((node as HTMLAnchorElement).href);
+
+            if (url.host === location.host) {
+              (node as HTMLScriptElement).setAttribute('data-resolved-url', url.pathname + url.search + url.hash);
+            }
           }
 
         } else if (tagName === 'script') {
           if ((node as HTMLScriptElement).src) {
-            (node as HTMLElement).setAttribute('data-resolved-url', (node as HTMLScriptElement).src);
+            const url = new URL((node as HTMLScriptElement).src);
+
+            if (url.host === location.host) {
+              (node as HTMLScriptElement).setAttribute('data-resolved-url', url.pathname + url.search + url.hash);
+            }
           }
 
         } else if (tagName === 'link') {
           if ((node as HTMLLinkElement).rel.toLowerCase() === 'stylesheet' && (node as HTMLLinkElement).href) {
-            (node as HTMLElement).setAttribute('data-resolved-url', (node as HTMLLinkElement).href);
+            const url = new URL((node as HTMLLinkElement).href);
+
+            if (url.host === location.host) {
+              (node as HTMLLinkElement).setAttribute('data-resolved-url', url.pathname + url.search + url.hash);
+            }
           }
         }
 
@@ -152,13 +167,6 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
               }
             }
           }
-        }
-
-      } else if (node.nodeType === 8) {
-        // comment node
-        if (pageUpdateConfig.removeHtmlComments) {
-          // remove comment node
-          (node as any).remove();
         }
       }
     }
@@ -216,7 +224,12 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
   }, pageUpdateConfig);
 
   results.document = parseHtmlToDocument(extractData.html);
+
   results.url = extractData.url;
+  results.host = extractData.host;
+  results.pathname = extractData.pathname;
+  results.search = extractData.search;
+  results.hash = extractData.hash;
 
   if (results.metrics) {
     results.metrics.appLoadDuration = extractData.stencilAppLoadDuration;
@@ -243,7 +256,6 @@ function calulateCoverage(entries: puppeteer.CoverageEntry[]) {
 
 interface PageUpdateConfig {
   collapseWhitespace: boolean;
-  removeHtmlComments: boolean;
 }
 
 
@@ -257,6 +269,8 @@ interface ExtractData {
   html: string;
   stencilAppLoadDuration: number;
   url: string;
+  host: string;
+  path: string;
   pathname: string;
   search: string;
   hash: string;
@@ -387,9 +401,7 @@ export async function startPuppeteerBrowser(config: d.Config) {
 
   const launchOpts: puppeteer.LaunchOptions = {
     ignoreHTTPSErrors: true,
-    // args: config.testing.browserArgs,
-    headless: false,
-    // slowMo: config.testing.browserSlowMo
+    headless: true
   };
 
   const browser = await ptr.launch(launchOpts) as puppeteer.Browser;

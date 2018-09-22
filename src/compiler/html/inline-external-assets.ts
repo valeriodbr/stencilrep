@@ -31,15 +31,19 @@ function extractLinkAndScriptElements(linkElements: HTMLLinkElement[], scriptEle
   if (elm) {
 
     if (elm.nodeName === 'SCRIPT') {
-      if (elm.hasAttribute('data-resolved-url')) {
+      const resolvedUrl = elm.getAttribute('data-resolved-url');
+      if (resolvedUrl) {
+        (elm as any).__resolvedUrl = resolvedUrl;
+        elm.removeAttribute('data-resolved-url');
         scriptElements.push(elm as any);
       }
 
     } else if (elm.nodeName === 'LINK') {
-      if ((elm as HTMLLinkElement).rel.toLowerCase() === 'stylesheet') {
-        if (elm.hasAttribute('data-resolved-url')) {
-          linkElements.push(elm as any);
-        }
+      const resolvedUrl = elm.getAttribute('data-resolved-url');
+      if (resolvedUrl) {
+        (elm as any).__resolvedUrl = resolvedUrl;
+        elm.removeAttribute('data-resolved-url');
+        linkElements.push(elm as any);
       }
 
     } else {

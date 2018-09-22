@@ -130,11 +130,6 @@ export interface OutputTargetWww extends OutputTargetBase {
   }[];
 
   /**
-   * Remove `<!--html comments-->` from prerendered output. Default: `true`
-   */
-  removeHtmlComments?: boolean;
-
-  /**
    * Analyze each page after prerendering and removes any CSS not used.
    * Default: `true`
    */

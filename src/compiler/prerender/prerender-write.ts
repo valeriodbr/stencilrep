@@ -4,12 +4,11 @@ import { serializeNodeToHtml } from '@stencil/core/mock-doc';
 
 
 export async function writePrerenderResults(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
-
-  results.html = serializeNodeToHtml(results.document as any, {
-    pretty: this.outputTarget.prettyHtml
-  });
-
   try {
+    results.html = serializeNodeToHtml(results.document as any, {
+      pretty: outputTarget.prettyHtml
+    });
+
     for (let i = 0; i < 5; i++) {
       const success = await writePrerenderContent(config, compilerCtx, buildCtx, outputTarget, results);
       if (success) {
@@ -30,11 +29,10 @@ export async function writePrerenderResults(config: d.Config, compilerCtx: d.Com
 async function writePrerenderContent(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
   let success = false;
 
-  // create the full path where this will be saved
-  const parsedUrl = config.sys.url.parse(results.url);
-  const filePath = getWritePathFromUrl(config, outputTarget, parsedUrl);
-
   try {
+    // create the full path where this will be saved
+    const filePath = getWritePathFromUrl(config, outputTarget, results.pathname);
+
     // add the prerender html content it to our collection of
     // files that need to be saved when we're all ready
     // do NOT use the cache here, best to not use up that memory
@@ -42,7 +40,7 @@ async function writePrerenderContent(config: d.Config, compilerCtx: d.CompilerCt
 
     if (outputTarget.pageAnalysis && outputTarget.pageAnalysis.dir) {
       results.metrics.htmlBytes = results.html.length;
-      await writePageAnalysis(config, compilerCtx, outputTarget, parsedUrl, results);
+      await writePageAnalysis(config, compilerCtx, outputTarget, results);
     }
 
     // write the files now
@@ -56,22 +54,23 @@ async function writePrerenderContent(config: d.Config, compilerCtx: d.CompilerCt
     // gah!! what!!
     const diagnostic = buildError(buildCtx.diagnostics);
     diagnostic.header = `Prerender Write Error`;
-    diagnostic.messageText = `writePrerenderDest, url: ${results.url}, filePath: ${filePath}, ${e}`;
+    diagnostic.messageText = `writePrerenderDest, url: ${results.url}, pathname: ${results.pathname}, ${e}`;
   }
 
   return success;
 }
 
 
-async function writePageAnalysis(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, parsedUrl: d.Url, results: d.PrerenderResults) {
-  const fileName = encodeURIComponent(parsedUrl.path);
+async function writePageAnalysis(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults) {
+  const fileName = encodeURIComponent(results.path) + '.json';
   const filePath = config.sys.path.join(outputTarget.pageAnalysis.dir, fileName);
 
   const pageAnalysis: d.PageAnalysis = {
-    pathname: parsedUrl.pathname,
-    search: parsedUrl.query,
-    hash: parsedUrl.hash,
-    anchorUrls: results.anchorUrls,
+    path: results.path,
+    pathname: results.pathname,
+    search: results.search,
+    hash: results.hash,
+    anchorPaths: results.anchorPaths,
     diagnostics: results.diagnostics,
     pageErrors: results.pageErrors,
     requests: results.requests,
@@ -83,20 +82,19 @@ async function writePageAnalysis(config: d.Config, compilerCtx: d.CompilerCtx, o
 }
 
 
-export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTargetWww, parsedUrl: d.Url) {
-  let pathName = parsedUrl.pathname;
-  if (pathName.startsWith(outputTarget.baseUrl)) {
-    pathName = pathName.substring(outputTarget.baseUrl.length);
+export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTargetWww, pathname: string) {
+  if (pathname.startsWith(outputTarget.baseUrl)) {
+    pathname = pathname.substring(outputTarget.baseUrl.length);
 
-  } else if (outputTarget.baseUrl === pathName + '/') {
-    pathName = '/';
+  } else if (outputTarget.baseUrl === pathname + '/') {
+    pathname = '/';
   }
 
   // figure out the directory where this file will be saved
   const dir = pathJoin(
     config,
     outputTarget.dir,
-    pathName
+    pathname
   );
 
   // create the full path where this will be saved (normalize for windowz)
