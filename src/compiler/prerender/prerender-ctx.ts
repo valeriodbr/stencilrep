@@ -2,8 +2,9 @@ import * as d from '../../declarations';
 import { catchError, hasError } from '../util';
 import { closePuppeteerBrowser, ensurePuppeteer, prerender, startPuppeteerBrowser } from './puppeteer';
 import { extractResolvedAnchorUrls, queuePathForPrerender } from './prerender-utils';
-import { optimizeHtml } from '../html/optimize-html';
 import { getWritePathFromUrl, writePageAnalysis, writePrerenderResults } from './prerender-write';
+import { optimizeHtml } from '../html/optimize-html';
+import { prepareIndexHtml } from './prerender-index-html';
 
 
 export class PrerenderCtx {
@@ -27,6 +28,10 @@ export class PrerenderCtx {
 
     // fire up the puppeteer browser
     this.browser = await startPuppeteerBrowser(this.config);
+  }
+
+  async prepareIndexHtml() {
+    await prepareIndexHtml(this.config, this.compilerCtx, this.outputTarget);
   }
 
   async prerenderAll(paths: string[]) {

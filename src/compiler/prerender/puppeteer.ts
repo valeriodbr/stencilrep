@@ -2,8 +2,8 @@ import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
 import { catchError } from '../util';
 import { interceptRequests } from './prerender-requests';
-import { parseHtmlToDocument } from '@stencil/core/mock-doc';
 import { startPageAnalysis, stopPageAnalysis } from './page-analysis';
+import { parseHtmlToDocument } from '@stencil/core/mock-doc';
 
 
 export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, devServerHost: string, browser: puppeteer.Browser, results: d.PrerenderResults) {

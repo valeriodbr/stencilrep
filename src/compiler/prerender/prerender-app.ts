@@ -1,6 +1,5 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
-// import { prepareIndexHtml } from './prerender-index-html';
 import { PrerenderCtx } from './prerender-ctx';
 import { finalizePrerenderResults } from './prerender-write';
 
@@ -16,9 +15,17 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
     // create a context object to hold all things useful during prerendering
     const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
 
-    await prerenderCtx.startBrowser();
+    try {
+      await Promise.all([
+        prerenderCtx.startBrowser(),
+        prerenderCtx.prepareIndexHtml()
+      ]);
 
-    await prerenderOutputTarget(prerenderCtx);
+      await prerenderOutputTarget(prerenderCtx);
+
+    } catch (e) {
+      catchError(this.buildCtx.diagnostics, e);
+    }
 
     // shut it down!
     await prerenderCtx.destroy();
