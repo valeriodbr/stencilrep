@@ -1,8 +1,8 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
-import { generateHostConfig } from './host-config';
 // import { prepareIndexHtml } from './prerender-index-html';
 import { PrerenderCtx } from './prerender-ctx';
+import { finalizePrerenderResults } from './prerender-write';
 
 
 export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, _entryModules: d.EntryModule[]) {
@@ -55,7 +55,9 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
 
     // prerendering has finished
     // let's build a host config from the data
-    await generateHostConfig(prerenderCtx.config, prerenderCtx.compilerCtx, prerenderCtx.outputTarget, null);
+    // await generateHostConfig(prerenderCtx.config, prerenderCtx.compilerCtx, prerenderCtx.outputTarget, null);
+
+    await finalizePrerenderResults(prerenderCtx.config, prerenderCtx.outputTarget.dir);
 
   } catch (e) {
     catchError(prerenderCtx.buildCtx.diagnostics, e);

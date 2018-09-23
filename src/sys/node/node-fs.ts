@@ -69,6 +69,18 @@ export class NodeFs implements d.FileSystem {
     return fs.readFileSync(filePath, 'utf8');
   }
 
+  rename(oldPath: string, newPath: string) {
+    return new Promise<void>((resolve, reject) => {
+      fs.rename(oldPath, newPath, (err: any) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
   rmdir(dirPath: string) {
     return new Promise<void>((resolve, reject) => {
       fs.rmdir(dirPath, (err: any) => {

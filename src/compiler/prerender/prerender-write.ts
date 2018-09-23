@@ -26,6 +26,26 @@ export async function writePrerenderResults(compilerCtx: d.CompilerCtx, buildCtx
 }
 
 
+export async function finalizePrerenderResults(config: d.Config, dir: string) {
+  const items = await config.sys.fs.readdir(dir);
+
+  for (const item of items) {
+    const itemPath = config.sys.path.join(dir, item);
+
+    if (item.endsWith(PRERENDERED_SUFFIX)) {
+      const newPath = itemPath.replace(PRERENDERED_SUFFIX, '');
+      await config.sys.fs.rename(itemPath, newPath);
+
+    } else {
+      const stat = await config.sys.fs.stat(itemPath);
+      if (stat.isDirectory()) {
+        await finalizePrerenderResults(config, itemPath);
+      }
+    }
+  }
+}
+
+
 async function writePrerenderContent(compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, results: d.PrerenderResults, filePath: string) {
   let success = false;
 
@@ -98,5 +118,7 @@ export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTarg
     filePath = pathJoin(config, dir, `index.html`);
   }
 
-  return filePath + '.prerendererd';
+  return filePath + PRERENDERED_SUFFIX;
 }
+
+const PRERENDERED_SUFFIX = `.prerendered`;

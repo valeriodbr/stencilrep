@@ -8,17 +8,17 @@ import { getWritePathFromUrl, writePageAnalysis, writePrerenderResults } from '.
 
 export class PrerenderCtx {
   private browser: any = null;
-  private origin: string;
+  private devServerOrigin: string;
+  private devServerHost: string;
   private prerenderingDone: Function;
   queue: string[] = [];
   processing = new Set();
   completed = new Set();
 
   constructor(public config: d.Config, public compilerCtx: d.CompilerCtx, public buildCtx: d.BuildCtx, public outputTarget: d.OutputTargetWww) {
-    this.origin = config.devServer.browserUrl;
-    if (this.origin.endsWith('/')) {
-      this.origin = this.origin.substring(0, this.origin.length - 1);
-    }
+    const devServerUrl = config.sys.url.parse(config.devServer.browserUrl);
+    this.devServerHost = devServerUrl.host;
+    this.devServerOrigin = `http://${this.devServerHost}`;
   }
 
   async startBrowser() {
@@ -96,7 +96,7 @@ export class PrerenderCtx {
       const filePath = getWritePathFromUrl(this.config, this.outputTarget, path);
 
       const results: d.PrerenderResults = {
-        url: this.origin + path,
+        url: this.devServerOrigin + path,
         path: path,
         pathname: null,
         search: null,
@@ -111,7 +111,7 @@ export class PrerenderCtx {
 
       try {
         // prerender this url and wait on the results
-        await prerender(this.config, this.outputTarget, this.buildCtx, this.browser, results);
+        await prerender(this.config, this.outputTarget, this.buildCtx, this.devServerHost, this.browser, results);
 
         this.buildCtx.diagnostics.push(...results.diagnostics);
 

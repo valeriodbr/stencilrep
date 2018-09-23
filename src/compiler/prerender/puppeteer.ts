@@ -1,10 +1,12 @@
 import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
 import { catchError } from '../util';
+import { interceptRequests } from './prerender-requests';
 import { parseHtmlToDocument } from '@stencil/core/mock-doc';
+import { startPageAnalysis, stopPageAnalysis } from './page-analysis';
 
 
-export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, browser: puppeteer.Browser, results: d.PrerenderResults) {
+export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, devServerHost: string, browser: puppeteer.Browser, results: d.PrerenderResults) {
   try {
     // start up a new page
     const newPageTimespan = config.logger.createTimeSpan(`new page started: ${results.url}`, true);
@@ -15,13 +17,10 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
 
     addPageListeners(page, results);
 
-    await interceptRequests(config, outputTarget, buildCtx, page, results);
+    await interceptRequests(config, outputTarget, buildCtx, devServerHost, page, results);
 
     if (outputTarget.pageAnalysis) {
-      await Promise.all([
-        page.coverage.startJSCoverage(),
-        page.coverage.startCSSCoverage()
-      ]);
+      await startPageAnalysis(page);
     }
 
     const gotoTimespan = config.logger.createTimeSpan(`goto started: ${results.url}`, true);
@@ -34,29 +33,7 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
     await appLoaded;
 
     if (outputTarget.pageAnalysis) {
-      const [jsCoverage, cssCoverage, metrics] = await Promise.all([
-        page.coverage.stopJSCoverage(),
-        page.coverage.stopCSSCoverage(),
-        page.metrics()
-      ]);
-
-      results.coverage = {
-        css: calulateCoverage(cssCoverage),
-        js: calulateCoverage(jsCoverage)
-      };
-
-      results.metrics = {
-        jsEventListeners: metrics.JSEventListeners,
-        nodes: metrics.Nodes,
-        layoutCount: metrics.LayoutCount,
-        recalcStyleCount: metrics.RecalcStyleCount,
-        layoutDuration: metrics.LayoutDuration,
-        recalcStyleDuration: metrics.RecalcStyleDuration,
-        scriptDuration: metrics.ScriptDuration,
-        taskDuration: metrics.TaskDuration,
-        jsHeapUsedSize: metrics.JSHeapUsedSize,
-        jsHeapTotalSize: metrics.JSHeapTotalSize,
-      };
+      await stopPageAnalysis(config, devServerHost, page, results);
     }
 
     const processPageTimespan = config.logger.createTimeSpan(`process page started: ${results.url}`, true);
@@ -234,23 +211,6 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
 }
 
 
-function calulateCoverage(entries: puppeteer.CoverageEntry[]) {
-  return entries.map(entry => {
-    const converageEntry: d.PageCoverageEntry = {
-      url: entry.url,
-      totalBytes: entry.text.length,
-      usedBytes: 0
-    };
-
-    for (const range of entry.ranges) {
-      converageEntry.usedBytes += range.end - range.start - 1;
-    }
-
-    return converageEntry;
-  });
-}
-
-
 interface PageUpdateConfig {
   collapseWhitespace: boolean;
   pathQuery?: boolean;
@@ -275,87 +235,6 @@ interface ExtractData {
 }
 
 
-async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, page: puppeteer.Page, results: d.PrerenderResults) {
-  await page.setRequestInterception(true);
-
-  page.on('request', async (interceptedRequest) => {
-    let url = interceptedRequest.url();
-    const resourceType = interceptedRequest.resourceType();
-
-    if (resourceType !== 'document') {
-      results.requests.push({
-        url: url,
-        type: resourceType,
-        status: null
-      });
-    }
-
-    const parsedUrl = config.sys.url.parse(url);
-
-    if (shouldAbort(outputTarget, parsedUrl, resourceType)) {
-      await interceptedRequest.abort();
-
-    } else if (isCoreScript(buildCtx, parsedUrl, resourceType)) {
-      url = url.replace(buildCtx.coreFileName, buildCtx.coreSsrFileName);
-
-      await interceptedRequest.continue({
-        url: url
-      });
-
-    } else {
-      await interceptedRequest.continue();
-    }
-  });
-}
-
-
-function isCoreScript(buildCtx: d.BuildCtx, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
-  if (resourceType !== 'script') {
-    return false;
-  }
-
-  const pathSplit = parsedUrl.pathname.split('/');
-  const fileName = pathSplit[pathSplit.length - 1];
-
-  return (fileName === buildCtx.coreFileName);
-}
-
-
-function shouldAbort(outputTargets: d.OutputTargetWww, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
-  if (resourceType === 'image') {
-    return true;
-  }
-
-  if (resourceType === 'media') {
-    return true;
-  }
-
-  if (resourceType === 'font') {
-    return true;
-  }
-
-  if (resourceType === 'manifest') {
-    return true;
-  }
-
-  if (resourceType === 'websocket') {
-    return true;
-  }
-
-  if (parsedUrl.path.includes('data:image')) {
-    return true;
-  }
-
-  return outputTargets.prerenderAbortRequests.some(abortReq => {
-    if (typeof abortReq.domain === 'string') {
-      return parsedUrl.host.includes(abortReq.domain);
-    }
-
-    return false;
-  });
-}
-
-
 function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
   page.on('pageerror', (err: any) => {
     if (err) {
@@ -375,23 +254,6 @@ function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
 
   page.on('error', err => {
     catchError(results.diagnostics, err);
-  });
-
-  page.on('requestfailed', rsp => {
-    const url = results.requests.find(r => r.url === rsp.url());
-    if (url) {
-      url.status = 'failed';
-    }
-  });
-
-  page.on('requestfinished', rsp => {
-    if (rsp.resourceType() === 'document') {
-      return;
-    }
-    const url = results.requests.find(r => r.url === rsp.url());
-    if (url) {
-      url.status = 'success';
-    }
   });
 }
 

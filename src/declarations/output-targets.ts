@@ -114,13 +114,11 @@ export interface OutputTargetWww extends OutputTargetBase {
   prerenderPathQuery?: boolean;
 
   /**
-   * Network requests to abort while prerendering. Default is to ignore
-   * some common analytic and advertisement urls such `google-analytics.com`
-   * and `doubleclick`.
+   * By default, requests to external domains are aborted, while all
+   * requests to the prerendering dev server are allowed. If the app
+   * is dependent on any external domains they should be added here.
    */
-  prerenderAbortRequests?: {
-    domain?: string;
-  }[];
+  prerenderAllowDomains?: string[];
 
   /**
    * Analyze each page after prerendering and removes any CSS not used.

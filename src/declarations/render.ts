@@ -40,7 +40,6 @@ export interface PageAnalysis {
 export interface PageRequest {
   url?: string;
   path?: string;
-  type: string;
   status: string;
 }
 
@@ -68,9 +67,10 @@ export interface PageCoverage {
 
 
 export interface PageCoverageEntry {
-  url: string;
-  totalBytes: number;
-  usedBytes: number;
+  url?: string;
+  path?: string;
+  totalBytes?: number;
+  usedBytes?: number;
 }
 
 
