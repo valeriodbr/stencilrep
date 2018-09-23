@@ -121,14 +121,6 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
           getResolvedUrl(node, (node as HTMLLinkElement).href);
         }
 
-        if ((node as HTMLElement).getAttribute('class') === '') {
-          (node as HTMLElement).removeAttribute('class');
-        }
-
-        if ((node as HTMLElement).getAttribute('style') === '') {
-          (node as HTMLElement).removeAttribute('style');
-        }
-
       } else if (node.nodeType === 3) {
         // text node
         if (pageUpdateConfig.collapseWhitespace) {
@@ -147,50 +139,7 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
     }
 
     if (document.documentElement) {
-      // let's do this
       optimize(document.documentElement);
-
-      if (!document.documentElement.hasAttribute('lang')) {
-        document.documentElement.setAttribute('lang', 'en-US');
-      }
-
-      if (!document.documentElement.hasAttribute('dir')) {
-        document.documentElement.setAttribute('dir', 'ltr');
-      }
-    }
-
-    if (document.head) {
-      // make sure the meta charset is first element in document.head
-      let metaCharset = document.head.querySelector('meta[charset]');
-      if (metaCharset) {
-        if (document.head.firstElementChild !== metaCharset) {
-          metaCharset.remove();
-          document.head.insertBefore(metaCharset, document.head.firstChild);
-        }
-
-      } else {
-        metaCharset = document.createElement('meta');
-        metaCharset.setAttribute('charset', 'utf-8');
-        document.head.insertBefore(metaCharset, document.head.firstChild);
-      }
-
-      // make sure sure we've got the http-equiv="X-UA-Compatible" IE=Edge meta tag added
-      let metaUaCompatible = document.head.querySelector('meta[http-equiv="X-UA-Compatible"]');
-      if (!metaUaCompatible) {
-        metaUaCompatible = document.createElement('meta');
-        metaUaCompatible.setAttribute('http-equiv', 'X-UA-Compatible');
-        metaUaCompatible.setAttribute('content', 'IE=Edge');
-        document.head.insertBefore(metaUaCompatible, metaCharset.nextSibling);
-      }
-    }
-
-    if (document.doctype) {
-      extractData.html = new XMLSerializer().serializeToString(document.doctype).toLowerCase();
-    } else {
-      extractData.html = '<!doctype html>';
-    }
-
-    if (document.documentElement) {
       extractData.html += document.documentElement.outerHTML;
     }
 
@@ -208,30 +157,6 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
   if (results.metrics) {
     results.metrics.appLoadDuration = extractData.stencilAppLoadDuration;
   }
-}
-
-
-interface PageUpdateConfig {
-  collapseWhitespace: boolean;
-  pathQuery?: boolean;
-  pathHash?: boolean;
-}
-
-
-interface StencilWindow {
-  stencilAppLoadDuration?: number;
-  stencilWindowInit?: number;
-}
-
-
-interface ExtractData {
-  html: string;
-  stencilAppLoadDuration: number;
-  url: string;
-  path: string;
-  pathname: string;
-  search: string;
-  hash: string;
 }
 
 
@@ -297,4 +222,28 @@ export async function closePuppeteerBrowser(browser: puppeteer.Browser) {
 
 export async function ensurePuppeteer(config: d.Config) {
   await config.sys.lazyRequire.ensure(config.logger, config.rootDir, ['puppeteer']);
+}
+
+
+interface PageUpdateConfig {
+  collapseWhitespace: boolean;
+  pathQuery?: boolean;
+  pathHash?: boolean;
+}
+
+
+interface StencilWindow {
+  stencilAppLoadDuration?: number;
+  stencilWindowInit?: number;
+}
+
+
+interface ExtractData {
+  html: string;
+  stencilAppLoadDuration: number;
+  url: string;
+  path: string;
+  pathname: string;
+  search: string;
+  hash: string;
 }
