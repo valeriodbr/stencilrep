@@ -96,9 +96,11 @@ describe('serializeNodeToHtml', () => {
     const elm = doc.createElement('button');
     elm.setAttribute('type', 'submit');
     elm.setAttribute('id', 'btn');
+    elm.setAttribute('slash', 'has/slash');
+    elm.setAttribute('dash', 'has-dash');
     elm.textContent = `Text`;
     const html = serializeNodeToHtml(elm, { outerHTML: true, removeAttributeQuotes: true });
-    expect(html).toBe(`<button type=submit id=btn>Text</button>`);
+    expect(html).toBe(`<button type=submit id=btn slash="has/slash" dash="has-dash">Text</button>`);
   });
 
   it('do not escape scripts', () => {

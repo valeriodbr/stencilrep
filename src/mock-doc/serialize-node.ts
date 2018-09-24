@@ -225,7 +225,7 @@ const NBSP_REGEX = /\u00a0/g;
 const DOUBLE_QUOTE_REGEX = /"/g;
 const LT_REGEX = /</g;
 const GT_REGEX = />/g;
-const CAN_REMOVE_ATTR_QUOTES = /^[^ \t\n\f\r"'`=<>]+$/;
+const CAN_REMOVE_ATTR_QUOTES = /^[^ \t\n\f\r"'`=<>\/\\-]+$/;
 
 function escapeString(str: string, attrMode: boolean) {
   str = str.replace(AMP_REGEX, '&amp;').replace(NBSP_REGEX, '&nbsp;');
