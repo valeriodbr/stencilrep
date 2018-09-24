@@ -125,12 +125,10 @@ describe('serializeNodeToHtml', () => {
   });
 
   it('script innerHTML', () => {
-    const input = `n<s`;
+    const input = `x<y && a>b`;
     const scriptElm = doc.createElement('script');
     scriptElm.innerHTML = input;
-
-    const output = serializeNodeToHtml(scriptElm);
-    expect(output).toBe(input);
+    expect(scriptElm.innerHTML).toBe(input);
   });
 
 });
