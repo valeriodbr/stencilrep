@@ -108,6 +108,7 @@ async function updateInlineLoaderScriptElement(config: d.Config, compilerCtx: d.
 
   // inline the js content
   scriptElm.innerHTML = content;
+  console.log(content)
 
   if (outputTarget.hydrateComponents) {
     // remove the script element from where it's currently at in the dom

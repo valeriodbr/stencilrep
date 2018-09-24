@@ -4,7 +4,7 @@ import { closePuppeteerBrowser, ensurePuppeteer, prerender, startPuppeteerBrowse
 import { extractResolvedAnchorUrls, queuePathForPrerender } from './prerender-utils';
 import { getWritePathFromUrl, writePageAnalysis, writePrerenderResults } from './prerender-write';
 import { optimizeHtml } from '../html/optimize-html';
-import { prepareIndexHtml } from './prerender-index-html';
+import { prepareIndexHtml } from '../html/prepare-index-html';
 
 
 export class PrerenderCtx {
@@ -31,7 +31,7 @@ export class PrerenderCtx {
   }
 
   async prepareIndexHtml() {
-    await prepareIndexHtml(this.config, this.compilerCtx, this.outputTarget);
+    await prepareIndexHtml(this.config, this.compilerCtx, this.buildCtx, this.outputTarget);
   }
 
   async prerenderAll(paths: string[]) {

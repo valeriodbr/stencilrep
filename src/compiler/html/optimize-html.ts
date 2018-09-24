@@ -1,9 +1,8 @@
 import * as d from '../../declarations';
 import { assetVersioning } from '../asset-versioning/asset-versioning';
-import { catchError } from '../util';
+// import { catchError } from '../util';
 import { inlineExternalAssets } from './inline-external-assets';
 import { inlineLoaderScript } from './inline-loader-script';
-import { minifyInlineScripts, minifyInlineStyles } from './minify-inline-content';
 import { optimizeSsrStyles } from '../style/optimize-ssr-styles';
 import { updateCanonicalLink } from './canonical-link';
 
@@ -45,47 +44,9 @@ export async function optimizeHtml(
   // reset for new promises
   const minifyPromises: Promise<any>[] = [];
 
-  if (config.minifyCss) {
-    minifyPromises.push(minifyInlineStyles(config, compilerCtx, results));
-  }
-
-  if (config.minifyJs) {
-    minifyPromises.push(minifyInlineScripts(config, compilerCtx, results));
-  }
-
   if (config.assetVersioning) {
     minifyPromises.push(assetVersioning(config, compilerCtx, hydrateTarget, results));
   }
 
   await Promise.all(minifyPromises);
-}
-
-
-export async function optimizeIndexHtml(
-  _config: d.Config,
-  compilerCtx: d.CompilerCtx,
-  hydrateTarget: d.OutputTargetHydrate,
-  _windowLocationPath: string,
-  diagnostics: d.Diagnostic[]
-) {
-  try {
-    hydrateTarget.html = await compilerCtx.fs.readFile(hydrateTarget.indexHtml);
-
-    try {
-      const doc: HTMLDocument = null;
-
-      if (doc) {
-        // await optimizeHtml(config, compilerCtx, hydrateTarget, windowLocationPath, doc, diagnostics);
-
-        // serialize this dom back into a string
-        // await compilerCtx.fs.writeFile(hydrateTarget.indexHtml, dom.serialize());
-      }
-
-    } catch (e) {
-      catchError(diagnostics, e);
-    }
-
-  } catch (e) {
-    // index.html file doesn't exist, which is fine
-  }
 }

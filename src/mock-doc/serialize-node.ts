@@ -30,6 +30,10 @@ export function serializeNodeToHtml(elm: MockElement, opts: SerializeElementOpti
     opts.collapseBooleanAttributes = false;
   }
 
+  if (typeof opts.removeHtmlComments !== 'boolean') {
+    opts.removeHtmlComments = false;
+  }
+
   if (opts.outerHTML) {
     serializeToHtml(elm, opts, output);
 
@@ -205,7 +209,7 @@ function serializeToHtml(node: MockNode, opts: SerializeElementOptions, output: 
       }
     }
 
-  } else if (node.nodeType === NODE_TYPES.COMMENT_NODE) {
+  } else if (node.nodeType === NODE_TYPES.COMMENT_NODE && !opts.removeHtmlComments) {
     if (opts.newLines) {
       output.text.push('\n');
     }
@@ -264,5 +268,6 @@ export interface SerializeElementOptions {
   outerHTML?: boolean;
   pretty?: boolean;
   removeAttributeQuotes?: boolean;
+  removeHtmlComments?: boolean;
   removeEmptyAttributes?: boolean;
 }
