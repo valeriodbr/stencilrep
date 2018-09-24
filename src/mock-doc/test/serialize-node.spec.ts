@@ -124,4 +124,13 @@ describe('serializeNodeToHtml', () => {
 </html>`);
   });
 
+  it('script innerHTML', () => {
+    const input = `n<s`;
+    const scriptElm = doc.createElement('script');
+    scriptElm.innerHTML = input;
+
+    const output = serializeNodeToHtml(scriptElm);
+    expect(output).toBe(input);
+  });
+
 });
