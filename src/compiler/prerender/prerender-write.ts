@@ -6,7 +6,10 @@ import { serializeNodeToHtml } from '@stencil/core/mock-doc';
 export async function writePrerenderResults(compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, results: d.PrerenderResults, filePath: string) {
   try {
     results.html = serializeNodeToHtml(results.document as any, {
-      pretty: outputTarget.prettyHtml
+      pretty: outputTarget.prettyHtml,
+      collapseBooleanAttributes: !outputTarget.prettyHtml,
+      removeAttributeQuotes: !outputTarget.prettyHtml,
+      removeEmptyAttributes: !outputTarget.prettyHtml
     });
 
     for (let i = 0; i < 5; i++) {

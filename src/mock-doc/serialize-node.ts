@@ -8,12 +8,14 @@ export function serializeNodeToHtml(elm: MockElement, opts: SerializeElementOpti
     text: []
   };
 
-  if (opts.pretty && typeof opts.indentSpaces !== 'number') {
-    opts.indentSpaces = 2;
-  }
+  if (opts.pretty) {
+    if (typeof opts.indentSpaces !== 'number') {
+      opts.indentSpaces = 2;
+    }
 
-  if (opts.pretty && typeof opts.newLines !== 'boolean') {
-    opts.newLines = true;
+    if (typeof opts.newLines !== 'boolean') {
+      opts.newLines = true;
+    }
   }
 
   if (typeof opts.removeAttributeQuotes !== 'boolean') {
@@ -30,6 +32,7 @@ export function serializeNodeToHtml(elm: MockElement, opts: SerializeElementOpti
 
   if (opts.outerHTML) {
     serializeToHtml(elm, opts, output);
+
   } else {
     for (let i = 0; i < elm.childNodes.length; i++) {
       serializeToHtml(elm.childNodes[i], opts, output);
@@ -39,6 +42,7 @@ export function serializeNodeToHtml(elm: MockElement, opts: SerializeElementOpti
   if (output.text[0] === '\n') {
     output.text.shift();
   }
+
   if (output.text[output.text.length - 1] === '\n') {
     output.text.pop();
   }

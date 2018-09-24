@@ -50,112 +50,98 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
 
 async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page, results: d.PrerenderResults) {
   const pageUpdateConfig: PageUpdateConfig = {
-    collapseWhitespace: (outputTarget.collapseWhitespace !== false),
     pathQuery: outputTarget.prerenderPathQuery,
     pathHash: outputTarget.prerenderPathHash
   };
 
-  const extractData: ExtractData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
+  const pageData: PageData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
     // BROWSER CONTEXT
 
-    const url = new URL(location.href);
+    const locationUrl = new URL(location.href);
 
     // data object to build up and pass back from the browser to main
-    const extractData: ExtractData = {
+    const pageData: PageData = {
       html: '',
-      url: url.href,
-      path: url.pathname,
-      pathname: url.pathname,
-      search: url.search,
-      hash: url.hash,
+      url: locationUrl.href,
+      path: locationUrl.pathname,
       stencilAppLoadDuration: (window as StencilWindow).stencilAppLoadDuration
     };
 
-    if (pageUpdateConfig.pathQuery) {
-      extractData.path += pageUpdateConfig.pathQuery;
+    if (pageUpdateConfig.pathQuery || pageUpdateConfig.pathHash) {
+      pageData.pathname = locationUrl.pathname;
+
+      if (pageUpdateConfig.pathQuery) {
+        pageData.path += locationUrl.search;
+        pageData.search = locationUrl.search;
+      }
+
+      if (pageUpdateConfig.pathHash) {
+        pageData.path += locationUrl.hash;
+        pageData.hash = locationUrl.hash;
+      }
     }
 
-    if (pageUpdateConfig.pathHash) {
-      extractData.path += pageUpdateConfig.pathHash;
-    }
-
-    const WHITESPACE_SENSITIVE_TAGS = ['PRE', 'SCRIPT', 'STYLE', 'TEXTAREA'];
-
-    function getResolvedUrl(elm: Node, href: string) {
+    function setElementResolvedPath(elm: Node, href: string) {
       if (href) {
         const url = new URL(href);
 
-        if (url.host === location.host) {
-          let rtn = url.pathname;
+        if (url.host === locationUrl.host) {
+          let path = url.pathname;
           if (pageUpdateConfig.pathQuery) {
-            rtn += pageUpdateConfig.pathQuery;
+            path += url.search;
           }
           if (pageUpdateConfig.pathHash) {
-            rtn += pageUpdateConfig.pathHash;
+            path += url.hash;
           }
-          (elm as HTMLScriptElement).setAttribute('data-resolved-path', rtn);
+          (elm as HTMLScriptElement).setAttribute('data-resolved-path', path);
         }
       }
     }
 
-    function optimize(node: Node) {
-      if (!node) {
-        return;
-      }
-
-      if (node.nodeType === 1) {
+    function setResolvedPaths(elm: Element) {
+      if (elm.nodeType === 1) {
         // element
-        for (let i = node.childNodes.length - 1; i >= 0; i--) {
-          optimize(node.childNodes[i]);
-        }
-
-        const tagName = (node as HTMLAnchorElement).nodeName.toLowerCase();
+        const tagName = elm.tagName.toLowerCase();
 
         if (tagName === 'a') {
-          getResolvedUrl(node, (node as HTMLAnchorElement).href);
+          setElementResolvedPath(elm, (elm as HTMLAnchorElement).href);
 
         } else if (tagName === 'script') {
-          getResolvedUrl(node, (node as HTMLScriptElement).src);
+          setElementResolvedPath(elm, (elm as HTMLScriptElement).src);
 
-        } else if (tagName === 'link' && (node as HTMLLinkElement).rel.toLowerCase() === 'stylesheet') {
-          getResolvedUrl(node, (node as HTMLLinkElement).href);
+        } else if (tagName === 'link' && (elm as HTMLLinkElement).rel.toLowerCase() === 'stylesheet') {
+          setElementResolvedPath(elm, (elm as HTMLLinkElement).href);
         }
+      }
 
-      } else if (node.nodeType === 3) {
-        // text node
-        if (pageUpdateConfig.collapseWhitespace) {
-          // collapse whitespace
-          if (!WHITESPACE_SENSITIVE_TAGS.includes(node.parentElement.tagName)) {
-            if (node.nodeValue.trim() === '') {
-              if (node.previousSibling && node.previousSibling.nodeType === 3 && node.previousSibling.nodeValue.trim() === '') {
-                node.nodeValue = ' ';
-              } else {
-                (node as any).remove();
-              }
-            }
-          }
-        }
+      if (elm.shadowRoot && elm.shadowRoot.nodeType === 11) {
+        setResolvedPaths(elm.shadowRoot as any);
+      }
+
+      for (let i = 0, l = elm.children.length; i < l; i++) {
+        setResolvedPaths(elm.children[i]);
       }
     }
 
     if (document.documentElement) {
-      optimize(document.documentElement);
-      extractData.html += document.documentElement.outerHTML;
+      setResolvedPaths(document.documentElement);
+      pageData.html += document.documentElement.outerHTML;
     }
 
-    return extractData;
+    return pageData;
 
   }, pageUpdateConfig);
 
-  results.document = parseHtmlToDocument(extractData.html);
+  results.document = parseHtmlToDocument(pageData.html);
 
-  results.url = extractData.url;
-  results.pathname = extractData.pathname;
-  results.search = extractData.search;
-  results.hash = extractData.hash;
+  results.url = pageData.url;
+  results.path = pageData.path;
+  results.pathname = pageData.pathname;
+  results.search = pageData.search;
+  results.hash = pageData.hash;
 
   if (results.metrics) {
-    results.metrics.appLoadDuration = extractData.stencilAppLoadDuration;
+    results.metrics.appLoadDuration = pageData.stencilAppLoadDuration;
   }
 }
 
@@ -226,9 +212,8 @@ export async function ensurePuppeteer(config: d.Config) {
 
 
 interface PageUpdateConfig {
-  collapseWhitespace: boolean;
-  pathQuery?: boolean;
-  pathHash?: boolean;
+  pathQuery: boolean;
+  pathHash: boolean;
 }
 
 
@@ -238,12 +223,12 @@ interface StencilWindow {
 }
 
 
-interface ExtractData {
+interface PageData {
   html: string;
   stencilAppLoadDuration: number;
   url: string;
   path: string;
-  pathname: string;
-  search: string;
-  hash: string;
+  pathname?: string;
+  search?: string;
+  hash?: string;
 }
