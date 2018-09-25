@@ -5,7 +5,6 @@ export interface RenderOptions {
   canonicalLink?: boolean;
   collapseWhitespace?: boolean;
   inlineAssetsMaxSize?: number;
-  inlineLoaderScript?: boolean;
   inlineStyles?: boolean;
   removeUnusedStyles?: boolean;
   ssrIds?: boolean;

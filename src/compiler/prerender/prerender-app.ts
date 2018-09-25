@@ -34,6 +34,10 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
 
 
 async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
+  if (hasError(prerenderCtx.buildCtx.diagnostics)) {
+    return;
+  }
+
   // get the prerender urls queued up
   const pathsQueue = prerenderCtx.outputTarget.prerenderLocations.map(prerenderLocation => {
     return prerenderLocation.path;

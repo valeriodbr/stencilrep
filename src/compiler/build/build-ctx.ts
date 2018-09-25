@@ -4,6 +4,7 @@ import { hasError, hasWarning } from '../util';
 
 
 export class BuildContext implements d.BuildCtx {
+  appBuilds = new Map();
   appFileBuildCount = 0;
   buildId = -1;
   buildMessages: string[] = [];

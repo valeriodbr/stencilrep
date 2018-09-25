@@ -48,11 +48,11 @@ export function generateHostRule(config: d.Config, compilerCtx: d.CompilerCtx, o
 }
 
 
-export function generateHostRuleHeaders(config: d.Config, compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, entryModules: d.EntryModule[], hydrateResults: d.HydrateResults) {
+export function generateHostRuleHeaders(config: d.Config, _compilerCtx: d.CompilerCtx, outputTarget: d.OutputTargetWww, entryModules: d.EntryModule[], hydrateResults: d.HydrateResults) {
   const hostRuleHeaders: d.HostRuleHeader[] = [];
 
   addStyles(config, hostRuleHeaders, hydrateResults);
-  addCoreJs(config, outputTarget, compilerCtx.appCoreWWWPath, hostRuleHeaders);
+  addCoreJs(config, outputTarget, null /*TODO*/, hostRuleHeaders);
   addBundles(config, outputTarget, entryModules, hostRuleHeaders, hydrateResults.components);
   addScripts(config, hostRuleHeaders, hydrateResults);
   addImgs(config, hostRuleHeaders, hydrateResults);

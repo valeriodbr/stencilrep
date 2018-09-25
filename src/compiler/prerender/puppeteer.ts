@@ -13,7 +13,7 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
     const page = await browser.newPage();
     newPageTimespan.finish(`new page finished: ${results.url}`);
 
-    const appLoaded = createAppLoadListener(page);
+    await createAppLoadListener(page);
 
     addPageListeners(page, results);
 
@@ -30,7 +30,13 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
     });
     gotoTimespan.finish(`goto finished: ${results.url}`);
 
-    await appLoaded;
+    const isStencilApp = await page.evaluate(() => {
+      return !!((window as StencilWindow).stencilApp);
+    });
+
+    if (isStencilApp) {
+      await page.waitForFunction('window.stencilAppLoadDuration');
+    }
 
     if (outputTarget.pageAnalysis) {
       await stopPageAnalysis(config, devServerHost, page, results);
@@ -179,8 +185,6 @@ async function createAppLoadListener(page: puppeteer.Page) {
       (window as StencilWindow).stencilAppLoadDuration = (Date.now() - (window as StencilWindow).stencilWindowInit);
     });
   });
-
-  return page.waitForFunction('window.stencilAppLoadDuration');
 }
 
 
@@ -218,6 +222,7 @@ interface PageUpdateConfig {
 
 
 interface StencilWindow {
+  stencilApp?: boolean;
   stencilAppLoadDuration?: number;
   stencilWindowInit?: number;
 }

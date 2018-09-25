@@ -1,8 +1,6 @@
 import * as d from '../../declarations';
 import { assetVersioning } from '../asset-versioning/asset-versioning';
-// import { catchError } from '../util';
 import { inlineExternalAssets } from './inline-external-assets';
-import { inlineLoaderScript } from './inline-loader-script';
 import { optimizeSsrStyles } from '../style/optimize-ssr-styles';
 import { updateCanonicalLink } from './canonical-link';
 
@@ -27,12 +25,6 @@ export async function optimizeHtml(
   }
 
   const inlinePromises: Promise<any>[] = [];
-
-  if (hydrateTarget.inlineLoaderScript) {
-    // remove the script to the external loader script request
-    // inline the loader script at the bottom of the html
-    inlinePromises.push(inlineLoaderScript(config, compilerCtx, hydrateTarget, results));
-  }
 
   if (hydrateTarget.inlineAssetsMaxSize > 0) {
     inlinePromises.push(inlineExternalAssets(config, compilerCtx, hydrateTarget, results));

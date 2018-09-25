@@ -34,7 +34,6 @@ export function validatePrerender(config: d.Config, outputTarget: d.OutputTarget
   setBooleanConfig(outputTarget, 'collapseWhitespace', null, defaults.collapseWhitespace);
   setBooleanConfig(outputTarget, 'hydrateComponents', null, defaults.hydrateComponents);
   setBooleanConfig(outputTarget, 'inlineStyles', null, defaults.inlineStyles);
-  setBooleanConfig(outputTarget, 'inlineLoaderScript', null, defaults.inlineLoaderScript);
   setNumberConfig(outputTarget, 'inlineAssetsMaxSize', null, defaults.inlineAssetsMaxSize);
   setBooleanConfig(outputTarget, 'prerenderUrlCrawl', null, defaults.prerenderUrlCrawl);
   setArrayConfig(outputTarget, 'prerenderLocations', defaults.prerenderLocations);
@@ -78,7 +77,6 @@ const FULL_PRERENDER_DEFAULTS: d.OutputTargetWww = {
   collapseWhitespace: true,
   hydrateComponents: true,
   inlineStyles: true,
-  inlineLoaderScript: true,
   inlineAssetsMaxSize: 5000,
   prerenderUrlCrawl: true,
   prerenderPathHash: false,
@@ -95,7 +93,6 @@ const SSR_DEFAULTS: d.OutputTargetWww = {
   collapseWhitespace: true,
   hydrateComponents: true,
   inlineStyles: true,
-  inlineLoaderScript: true,
   inlineAssetsMaxSize: 0,
   prerenderUrlCrawl: false,
   prerenderPathHash: false,
@@ -112,7 +109,6 @@ const PROD_NON_HYDRATE_DEFAULTS: d.OutputTargetWww = {
   collapseWhitespace: true,
   hydrateComponents: false,
   inlineStyles: false,
-  inlineLoaderScript: true,
   inlineAssetsMaxSize: 0,
   prerenderUrlCrawl: false,
   prerenderPathHash: false,
@@ -129,7 +125,6 @@ const DEV_MODE_DEFAULTS: d.OutputTargetWww = {
   collapseWhitespace: false,
   hydrateComponents: false,
   inlineStyles: false,
-  inlineLoaderScript: false,
   inlineAssetsMaxSize: 0,
   prerenderUrlCrawl: false,
   prerenderPathHash: false,

@@ -1,11 +1,11 @@
-import { BuildConditionals, BuildCtx, CompilerCtx, Config, OutputTargetBuild } from '../../declarations';
+import * as d from '../../declarations';
 import { buildCoreContent } from './build-core-content';
 import { generatePreamble, pathJoin } from '../util';
 import { getAppBrowserCorePolyfills } from './app-polyfills';
 import { getAppBuildDir, getCoreFilename } from './app-file-naming';
 
 
-export async function generateCoreBrowser(config: Config, compilerCtx: CompilerCtx, buildCtx: BuildCtx, outputTarget: OutputTargetBuild, globalJsContent: string, buildConditionals: BuildConditionals) {
+export async function generateCoreBrowser(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetBuild, globalJsContent: string, buildConditionals: d.BuildConditionals) {
   const relPath = config.sys.path.relative(config.rootDir, getAppBuildDir(config, outputTarget));
   const timespan = buildCtx.createTimeSpan(`generateCoreBrowser ${buildConditionals.coreId} started, ${relPath}`, true);
 
@@ -40,7 +40,11 @@ export async function generateCoreBrowser(config: Config, compilerCtx: CompilerC
 
   const coreFilePath = pathJoin(config, getAppBuildDir(config, outputTarget), coreFileName);
 
-  compilerCtx.appCoreWWWPath = coreFilePath;
+  buildCtx.appBuilds.set(buildConditionals.coreId, {
+    id: buildConditionals.coreId,
+    filePath: coreFilePath,
+    content: jsContent
+  });
 
   await compilerCtx.fs.writeFile(coreFilePath, jsContent);
 
@@ -54,7 +58,7 @@ export async function generateCoreBrowser(config: Config, compilerCtx: CompilerC
 }
 
 
-export function wrapCoreJs(config: Config, jsContent: string) {
+export function wrapCoreJs(config: d.Config, jsContent: string) {
   if (typeof jsContent !== 'string') {
     jsContent = '';
   }

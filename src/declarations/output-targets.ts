@@ -67,15 +67,6 @@ export interface OutputTargetWww extends OutputTargetBase {
    */
   inlineStyles?: boolean;
 
-  /**
-   * If the loader script should be inlined into the prerendered
-   * page or not. Inlining the loader script allows the first render
-   * to have one less request, but adds a small amount more to the file size.
-   * Default: `true`
-   */
-  inlineLoaderScript?: boolean;
-
-
   inlineAssetsMaxSize?: number;
 
   /**

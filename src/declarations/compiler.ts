@@ -12,7 +12,6 @@ export interface Compiler {
 
 export interface CompilerCtx {
   activeBuildId?: number;
-  appCoreWWWPath?: string;
   appFiles?: {
     core?: string;
     corePolyfilled?: string;

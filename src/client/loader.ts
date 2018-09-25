@@ -69,7 +69,7 @@ export function init(
 
   } else {
     // let's do this!
-    x.src = resourcesUrl + appCore;
+    x.src = resourcesUrl + ((navigator.userAgent.indexOf('prerender') > -1) ? appCore : appCore);
     x.setAttribute('type', 'module');
     x.setAttribute('crossorigin', true);
   }

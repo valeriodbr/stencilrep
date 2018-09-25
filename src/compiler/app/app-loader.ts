@@ -46,6 +46,12 @@ export async function generateLoader(
 
   await compilerCtx.fs.writeFile(appLoaderPath, loaderContent);
 
+  buildCtx.appBuilds.set('loader', {
+    id: 'loader',
+    filePath: appLoaderPath,
+    content: loaderContent
+  });
+
   timeSpan.finish(`generateLoader finished, ${relPath}`);
 
   return loaderContent;

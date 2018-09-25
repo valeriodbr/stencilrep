@@ -9,6 +9,7 @@ export interface RollupResults {
 
 export interface BuildCtx {
   abort(): Promise<BuildResults>;
+  appBuilds: Map<string, { id: string; filePath: string; content: string; }>;
   appFileBuildCount: number;
   buildId: number;
   buildResults: d.BuildResults;
