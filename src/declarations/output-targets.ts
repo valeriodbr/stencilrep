@@ -170,12 +170,6 @@ export interface OutputTargetStats extends OutputTargetBase {
 export interface OutputTargetAngular extends OutputTargetBase {
   type: 'angular';
 
-  buildDir?: string;
-  dir?: string;
-  empty?: boolean;
-  resourcesUrl?: string;
-
-  typesDir?: string;
   componentCorePackage?: string;
   directivesProxyFile?: string;
   directivesArrayFile?: string;
@@ -190,7 +184,6 @@ export interface OutputTargetBase {
 
 
 export type OutputTargetBuild =
- | OutputTargetAngular
  | OutputTargetDist
  | OutputTargetHydrate
  | OutputTargetWww;
