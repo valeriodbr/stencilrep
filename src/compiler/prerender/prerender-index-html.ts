@@ -37,7 +37,7 @@ async function optimizeIndexForPrerender(config: d.Config, compilerCtx: d.Compil
 
   await minifyInlinedContent(config, compilerCtx, buildCtx, doc);
 
-  await inlinePrerenderClient(config, compilerCtx, buildCtx, outputTarget, doc);
+  await inlinePrerenderClient(config, buildCtx, outputTarget, doc);
 }
 
 

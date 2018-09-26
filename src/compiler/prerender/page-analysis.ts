@@ -1,5 +1,6 @@
 import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
+import { URL } from 'url';
 
 
 export async function startPageAnalysis(page: puppeteer.Page) {
@@ -10,19 +11,19 @@ export async function startPageAnalysis(page: puppeteer.Page) {
 }
 
 
-export async function stopPageAnalysis(config: d.Config, devServerHost: string, page: puppeteer.Page, results: d.PrerenderResults) {
+export async function stopPageAnalysis(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis, page: puppeteer.Page) {
   const [jsCoverage, cssCoverage, metrics] = await Promise.all([
     page.coverage.stopJSCoverage(),
     page.coverage.stopCSSCoverage(),
     page.metrics()
   ]);
 
-  results.coverage = {
-    css: calulateCoverage(config, devServerHost, cssCoverage),
-    js: calulateCoverage(config, devServerHost, jsCoverage)
+  pageAnalysis.coverage = {
+    css: calulateCoverage(input.devServerHost, cssCoverage),
+    js: calulateCoverage(input.devServerHost, jsCoverage)
   };
 
-  results.metrics = {
+  pageAnalysis.metrics = {
     jsEventListeners: metrics.JSEventListeners,
     nodes: metrics.Nodes,
     layoutCount: metrics.LayoutCount,
@@ -37,14 +38,14 @@ export async function stopPageAnalysis(config: d.Config, devServerHost: string, 
 }
 
 
-function calulateCoverage(config: d.Config, devServerHost: string, entries: puppeteer.CoverageEntry[]) {
+function calulateCoverage(devServerHost: string, entries: puppeteer.CoverageEntry[]) {
   return entries.map(entry => {
     const converageEntry: d.PageCoverageEntry = {};
 
-    const url = config.sys.url.parse(entry.url);
+    const url = new URL(entry.url);
 
     if (url.host === devServerHost) {
-      converageEntry.path = url.path;
+      converageEntry.path = url.pathname + url.search;
     } else {
       converageEntry.url = url.href;
     }

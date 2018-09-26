@@ -1,14 +1,14 @@
 import * as d from '../../declarations';
 import { catchError, hasError } from '../util';
-import { closePuppeteerBrowser, ensurePuppeteer, prerender, startPuppeteerBrowser } from './puppeteer';
-import { extractResolvedAnchorUrls, queuePathForPrerender } from './prerender-utils';
-import { getWritePathFromUrl, writePageAnalysis, writePrerenderResults } from './prerender-write';
-import { optimizeHtml } from '../html/optimize-html';
-import { finalizeDocumentAfterPrerender, prepareDocumentBeforePrerender } from './prerender-index-html';
+import { closePuppeteerBrowser, ensurePuppeteer, startPuppeteerBrowser } from './puppeteer';
+import { getWritePathFromUrl, queuePathForPrerender } from './prerender-utils';
+import { prepareDocumentBeforePrerender } from './prerender-index-html';
+import * as puppeteer from 'puppeteer';
 
 
 export class PrerenderCtx {
-  private browser: any = null;
+  private browser: puppeteer.Browser = null;
+  private browserWsEndpoint: string;
   private devServerOrigin: string;
   private devServerHost: string;
   private prerenderingDone: Function;
@@ -28,6 +28,8 @@ export class PrerenderCtx {
 
     // fire up the puppeteer browser
     this.browser = await startPuppeteerBrowser(this.config);
+
+    this.browserWsEndpoint = this.browser.wsEndpoint();
   }
 
   async prepareIndexHtml() {
@@ -98,30 +100,43 @@ export class PrerenderCtx {
     const start = Date.now();
 
     try {
-      const filePath = getWritePathFromUrl(this.config, this.outputTarget, path);
-
-      const results: d.PrerenderResults = {
+      const input: d.PrerenderInput = {
+        browserWsEndpoint: this.browserWsEndpoint,
+        devServerHost: this.devServerHost,
         url: this.devServerOrigin + path,
         path: path,
-        pathname: null,
-        search: null,
-        hash: null,
-        html: null,
-        document: null,
-        anchorPaths: [],
-        diagnostics: [],
-        pageErrors: [],
-        requests: [],
+        filePath: getWritePathFromUrl(this.config, this.outputTarget, path),
+        pageAnalysisDir: (this.outputTarget.pageAnalysis && this.outputTarget.pageAnalysis.dir),
+        prettyHtml: this.outputTarget.prettyHtml,
+        pathQuery: this.outputTarget.prerenderPathQuery,
+        pathHash: this.outputTarget.prerenderPathHash,
+        allowDomains: this.outputTarget.prerenderAllowDomains
       };
 
       try {
         // prerender this url and wait on the results
-        await prerender(this.config, this.outputTarget, this.buildCtx, this.devServerHost, this.browser, results);
+        const results = await this.config.sys.prerender(input);
 
         this.buildCtx.diagnostics.push(...results.diagnostics);
 
+        if (!hasError(results.diagnostics)) {
+
+          if (this.outputTarget.prerenderUrlCrawl) {
+            // we do want to keep crawling urls
+            // add any urls we found to the queue to be prerendered still
+            results.anchorPaths.forEach(anchorPath => {
+              try {
+                queuePathForPrerender(this.config, this.outputTarget, this.queue, this.processing, this.completed, anchorPath);
+              } catch (e) {
+                catchError(this.buildCtx.diagnostics, e);
+              }
+            });
+          }
+
+        }
+
       } catch (e) {
-        catchError(results.diagnostics, e);
+        catchError(this.buildCtx.diagnostics, e);
       }
 
       // we're done processing now
@@ -130,51 +145,13 @@ export class PrerenderCtx {
       // consider it completed
       this.completed.add(path);
 
-      if (!hasError(results.diagnostics)) {
-        finalizeDocumentAfterPrerender(results.document);
-
-        // now that we've prerendered the content
-        // let's optimize the document node even further
-        await optimizeHtml(this.config, this.compilerCtx, this.outputTarget, results);
-
-        // get all of the resolved anchor urls to continue to crawllll
-        extractResolvedAnchorUrls(results.anchorPaths, results.document.body);
-
-        // no errors, write out the results and modify the html as needed
-        await writePrerenderResults(this.compilerCtx, this.buildCtx, this.outputTarget, results, filePath);
-
-        if (this.outputTarget.prerenderUrlCrawl) {
-          // we do want to keep crawling urls
-          // add any urls we found to the queue to be prerendered still
-          results.anchorPaths.forEach(anchorPath => {
-            try {
-              queuePathForPrerender(this.config, this.outputTarget, this.queue, this.processing, this.completed, anchorPath);
-            } catch (e) {
-              catchError(results.diagnostics, e);
-            }
-          });
-        }
-      }
-
-      if (this.outputTarget.pageAnalysis && this.outputTarget.pageAnalysis.dir) {
-        if (results.metrics) {
-          results.metrics.htmlBytes = typeof results.html === 'string' ? results.html.length : 0;
-        }
-
-        await writePageAnalysis(this.config, this.compilerCtx, this.outputTarget, results);
-      }
-
-      // write the files now
-      // and since we're not using cache it'll free up memory
-      await this.compilerCtx.fs.commit();
-
-      logFinished(this.config.logger, start, path);
-
     } catch (e) {
       this.processing.delete(path);
       this.completed.add(path);
       catchError(this.buildCtx.diagnostics, e);
     }
+
+    logFinished(this.config.logger, start, path);
 
     // trigger to the queue we're all done and ready for the next one
     this.next();

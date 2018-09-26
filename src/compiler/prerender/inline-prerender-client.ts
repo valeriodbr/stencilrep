@@ -5,7 +5,6 @@ import { getLoaderFileName } from '../app/app-file-naming';
 
 export async function inlinePrerenderClient(
   config: d.Config,
-  _compilerCtx: d.CompilerCtx,
   buildCtx: d.BuildCtx,
   outputTarget: d.OutputTargetWww,
   doc: HTMLDocument

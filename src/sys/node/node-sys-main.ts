@@ -215,6 +215,10 @@ export class NodeSystem implements d.StencilSystem {
     return details;
   }
 
+  prerender(input: d.PrerenderInput) {
+    return this.sysWorker.run('prerender', [input]);
+  }
+
   requestLatestCompilerVersion() {
     return this.sysWorker.run('requestLatestCompilerVersion');
   }

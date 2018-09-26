@@ -41,6 +41,7 @@ export interface StencilSystem {
   minimatch?(path: string, pattern: string, opts?: any): boolean;
   open?: (url: string) => Promise<void>;
   path?: Path;
+  prerender?(input: d.PrerenderInput): Promise<d.PrerenderResults>;
   requestLatestCompilerVersion?(): Promise<string>;
   resolveModule?(fromDir: string, moduleId: string): string;
   rollup?: {

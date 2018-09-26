@@ -1,7 +1,7 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
-import { PrerenderCtx } from './prerender-ctx';
 import { finalizePrerenderResults } from './prerender-write';
+import { PrerenderCtx } from './prerender-ctx';
 
 
 export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, _entryModules: d.EntryModule[]) {
@@ -54,10 +54,8 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
   const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`);
 
   if (prerenderCtx.outputTarget.pageAnalysis) {
-    const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`empty ${prerenderCtx.outputTarget.pageAnalysis.dir} started`, true);
     await prerenderCtx.compilerCtx.fs.emptyDir(prerenderCtx.outputTarget.pageAnalysis.dir);
     await prerenderCtx.compilerCtx.fs.commit();
-    timeSpan.finish(`empty pageAnalysis finished`);
   }
 
   try {
@@ -65,9 +63,6 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
     await prerenderCtx.prerenderAll(pathsQueue);
 
     // prerendering has finished
-    // let's build a host config from the data
-    // await generateHostConfig(prerenderCtx.config, prerenderCtx.compilerCtx, prerenderCtx.outputTarget, null);
-
     await finalizePrerenderResults(prerenderCtx.config, prerenderCtx.outputTarget.dir);
 
   } catch (e) {

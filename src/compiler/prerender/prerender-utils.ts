@@ -1,7 +1,42 @@
 import * as d from '../../declarations';
+import { pathJoin } from '../util';
 
 
-export function extractResolvedAnchorUrls(anchorUrls: string[], elm: HTMLElement) {
+export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTargetWww, pathname: string) {
+  if (pathname.startsWith(outputTarget.baseUrl)) {
+    pathname = pathname.substring(outputTarget.baseUrl.length);
+
+  } else if (outputTarget.baseUrl === pathname + '/') {
+    pathname = '/';
+  }
+
+  // figure out the directory where this file will be saved
+  const dir = pathJoin(
+    config,
+    outputTarget.dir,
+    pathname
+  );
+
+  // create the full path where this will be saved (normalize for windowz)
+  let filePath: string;
+
+  if (dir + '/' === outputTarget.dir + '/') {
+    // this is the root of the output target directory
+    // use the configured index.html
+    const basename = outputTarget.indexHtml.substr(dir.length + 1);
+    filePath = pathJoin(config, dir, basename);
+
+  } else {
+    filePath = pathJoin(config, dir, `index.html`);
+  }
+
+  return filePath + PRERENDERED_SUFFIX;
+}
+
+export const PRERENDERED_SUFFIX = `.prerendered`;
+
+
+export function extractResolvedAnchorUrls(anchorUrls: string[], elm: Element) {
   if (elm) {
 
     if (elm.nodeName === 'A') {
@@ -11,6 +46,13 @@ export function extractResolvedAnchorUrls(anchorUrls: string[], elm: HTMLElement
           anchorUrls.push(resolvedAnchorUrl);
         }
         elm.removeAttribute('data-resolved-path');
+      }
+    }
+
+    if (elm.shadowRoot) {
+      const children = elm.shadowRoot.children;
+      for (let i = 0; i < children.length; i++) {
+        extractResolvedAnchorUrls(anchorUrls, children[i]);
       }
     }
 

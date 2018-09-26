@@ -1,8 +1,13 @@
+
+import { minify } from 'terser/dist/browser.bundle.js';
+import postcss from 'postcss';
+
 import * as d from '../../declarations';
 import { attachMessageHandler } from './worker/worker-child';
 import { copyTasksWorker } from '../../compiler/copy/copy-tasks-worker';
 import { loadMinifyJsDiagnostics } from '../../util/logger/logger-minify-js';
 import { normalizePath } from '../../compiler/util';
+import { prerendeWorker } from '../../compiler/prerender/prerender-worker';
 import { requestLatestCompilerVersion } from './check-version';
 import { ShadowCss } from '../../compiler/style/shadow-css';
 import { transpileToEs5Worker } from '../../compiler/transpile/transpile-to-es5-worker';
@@ -10,9 +15,6 @@ import { validateTypesWorker } from '../../compiler/transpile/validate-types-wor
 
 const autoprefixer = require('autoprefixer');
 const CleanCSS = require('clean-css');
-const postcss = require('postcss');
-
-const Terser = require('terser/dist/browser.bundle.js');
 
 
 export class NodeSystemWorker {
@@ -92,7 +94,7 @@ export class NodeSystemWorker {
   }
 
   minifyJs(input: string, opts?: any) {
-    const result: d.MinifyJsResult = Terser.minify(input, opts);
+    const result: d.MinifyJsResult = minify(input, opts);
     const diagnostics: d.Diagnostic[] = [];
 
     loadMinifyJsDiagnostics(input, result, diagnostics);
@@ -102,6 +104,10 @@ export class NodeSystemWorker {
       sourceMap: result.sourceMap,
       diagnostics: diagnostics
     };
+  }
+
+  prerender(input: d.PrerenderInput) {
+    return prerendeWorker(input);
   }
 
   requestLatestCompilerVersion() {

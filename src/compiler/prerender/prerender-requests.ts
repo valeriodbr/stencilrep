@@ -1,48 +1,41 @@
 import * as d from '../../declarations';
 import * as puppeteer from 'puppeteer'; // for types only
+import { URL } from 'url';
 
 
-export async function interceptRequests(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, devServerHost: string, page: puppeteer.Page, results: d.PrerenderResults) {
+export async function interceptRequests(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis, page: puppeteer.Page) {
   await page.setRequestInterception(true);
 
   page.on('request', async (interceptedRequest) => {
-    let url = interceptedRequest.url();
     const resourceType = interceptedRequest.resourceType();
 
-    const parsedUrl = config.sys.url.parse(url);
+    const url = new URL(interceptedRequest.url());
 
-    if (shouldAbort(devServerHost, outputTarget, parsedUrl, resourceType)) {
-      addRequest(results, devServerHost, parsedUrl, resourceType, 'aborted');
+    if (shouldAbort(input, url, resourceType)) {
+      addRequest(input, pageAnalysis, url, resourceType, 'aborted');
       await interceptedRequest.abort();
 
-    } else if (isCoreScript(buildCtx, parsedUrl, resourceType)) {
-      url = url.replace(buildCtx.coreFileName, buildCtx.coreSsrFileName);
-
-      await interceptedRequest.continue({
-        url: url
-      });
-
     } else {
-      addRequest(results, devServerHost, parsedUrl, resourceType);
+      addRequest(input, pageAnalysis, url, resourceType);
       await interceptedRequest.continue();
     }
   });
 }
 
 
-function addRequest(results: d.PrerenderResults, devServerHost: string, parsedUrl: d.Url, resourceType: string, status?: string) {
+function addRequest(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis, parsedUrl: d.Url, resourceType: string, status?: string) {
   if (resourceType === 'document') {
     return;
   }
 
-  if (devServerHost === parsedUrl.host) {
-    results.requests.push({
+  if (input.devServerHost === parsedUrl.host) {
+    pageAnalysis.requests.push({
       path: parsedUrl.path,
       status: status
     });
 
   } else {
-    results.requests.push({
+    pageAnalysis.requests.push({
       url: parsedUrl.href,
       status: status
     });
@@ -50,19 +43,7 @@ function addRequest(results: d.PrerenderResults, devServerHost: string, parsedUr
 }
 
 
-function isCoreScript(buildCtx: d.BuildCtx, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
-  if (resourceType !== 'script') {
-    return false;
-  }
-
-  const pathSplit = parsedUrl.pathname.split('/');
-  const fileName = pathSplit[pathSplit.length - 1];
-
-  return (fileName === buildCtx.coreFileName);
-}
-
-
-function shouldAbort(devServerHost: string, outputTargets: d.OutputTargetWww, parsedUrl: d.Url, resourceType: puppeteer.ResourceType) {
+function shouldAbort(input: d.PrerenderInput, url: URL, resourceType: puppeteer.ResourceType) {
   if (resourceType === 'image') {
     return true;
   }
@@ -83,16 +64,16 @@ function shouldAbort(devServerHost: string, outputTargets: d.OutputTargetWww, pa
     return true;
   }
 
-  if (parsedUrl.path.includes('data:image')) {
+  if (url.pathname.includes('data:image')) {
     return true;
   }
 
-  if (devServerHost === parsedUrl.host) {
+  if (input.devServerHost === url.host) {
     return false;
   }
 
-  const allowDomain = outputTargets.prerenderAllowDomains.some(prerenderAllowDomain => {
-    return parsedUrl.host === prerenderAllowDomain;
+  const allowDomain = input.allowDomains.some(allowDomain => {
+    return url.host === allowDomain;
   });
 
   return !allowDomain;

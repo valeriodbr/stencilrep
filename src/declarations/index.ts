@@ -28,6 +28,7 @@ export * from './minify-js';
 export * from './output-targets';
 export * from './platform';
 export * from './plugin';
+export * from './prerender';
 export * from './render';
 export * from './screenshots';
 export * from './server';

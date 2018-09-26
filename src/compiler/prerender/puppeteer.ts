@@ -6,31 +6,42 @@ import { startPageAnalysis, stopPageAnalysis } from './page-analysis';
 import { parseHtmlToDocument } from '@stencil/core/mock-doc';
 
 
-export async function prerender(config: d.Config, outputTarget: d.OutputTargetWww, buildCtx: d.BuildCtx, devServerHost: string, browser: puppeteer.Browser, results: d.PrerenderResults) {
+export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis) {
+  let doc: HTMLDocument = null;
+  let page: puppeteer.Page = null;
+  let browser: puppeteer.Browser = null;
+
   try {
+    const ptr = require('puppeteer');
+
+    const connectOpts: puppeteer.ConnectOptions = {
+      browserWSEndpoint: input.browserWsEndpoint,
+      ignoreHTTPSErrors: true
+    };
+
+    browser = await ptr.connect(connectOpts);
+
     // start up a new page
-    const newPageTimespan = config.logger.createTimeSpan(`new page started: ${results.url}`, true);
-    const page = await browser.newPage();
-    newPageTimespan.finish(`new page finished: ${results.url}`);
+    page = await browser.newPage();
 
     await createAppLoadListener(page);
 
-    addPageListeners(page, results);
+    addPageListeners(page, pageAnalysis);
 
-    await interceptRequests(config, outputTarget, buildCtx, devServerHost, page, results);
+    await interceptRequests(input, pageAnalysis, page);
 
-    if (outputTarget.pageAnalysis) {
+    if (input.pageAnalysisDir) {
       await startPageAnalysis(page);
     }
 
-    const gotoTimespan = config.logger.createTimeSpan(`goto started: ${results.url}`, true);
-    await page.goto(results.url, {
+    await page.goto(input.url, {
       waitUntil: 'load',
-      timeout: 15000
+      timeout: 10000
     });
-    gotoTimespan.finish(`goto finished: ${results.url}`);
 
     const isStencilApp = await page.evaluate(() => {
+      // prerendered index.html manually adds window.stencilApp
+      // so we know to wait on the app to load or not
       return !!((window as StencilWindow).stencilApp);
     });
 
@@ -38,26 +49,34 @@ export async function prerender(config: d.Config, outputTarget: d.OutputTargetWw
       await page.waitForFunction('window.stencilAppLoadDuration');
     }
 
-    if (outputTarget.pageAnalysis) {
-      await stopPageAnalysis(config, devServerHost, page, results);
+    if (input.pageAnalysisDir) {
+      await stopPageAnalysis(input, pageAnalysis, page);
     }
 
-    const processPageTimespan = config.logger.createTimeSpan(`process page started: ${results.url}`, true);
-    await processPage(outputTarget, page, results);
-    processPageTimespan.finish(`process page finished: ${results.url}`);
-
-    await page.close();
+    doc = await prerenderToDocument(input, page, pageAnalysis);
 
   } catch (e) {
-    catchError(results.diagnostics, e);
+    catchError(pageAnalysis.diagnostics, e);
+
+  } finally {
+    if (page) {
+      await page.close();
+      page = null;
+    }
+    if (browser) {
+      await browser.disconnect();
+      browser = null;
+    }
   }
+
+  return doc;
 }
 
 
-async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page, results: d.PrerenderResults) {
+async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page, pageAnalysis: d.PageAnalysis) {
   const pageUpdateConfig: PageUpdateConfig = {
-    pathQuery: outputTarget.prerenderPathQuery,
-    pathHash: outputTarget.prerenderPathHash
+    pathQuery: input.pathQuery,
+    pathHash: input.pathHash
   };
 
   const pageData: PageData = await page.evaluate((pageUpdateConfig: PageUpdateConfig) => {
@@ -68,7 +87,6 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
     // data object to build up and pass back from the browser to main
     const pageData: PageData = {
       html: '',
-      url: locationUrl.href,
       path: locationUrl.pathname,
       stencilAppLoadDuration: (window as StencilWindow).stencilAppLoadDuration
     };
@@ -138,30 +156,29 @@ async function processPage(outputTarget: d.OutputTargetWww, page: puppeteer.Page
 
   }, pageUpdateConfig);
 
-  results.document = parseHtmlToDocument(pageData.html);
+  pageAnalysis.path = pageData.path;
+  pageAnalysis.pathname = pageData.pathname;
+  pageAnalysis.search = pageData.search;
+  pageAnalysis.hash = pageData.hash;
 
-  results.url = pageData.url;
-  results.path = pageData.path;
-  results.pathname = pageData.pathname;
-  results.search = pageData.search;
-  results.hash = pageData.hash;
-
-  if (results.metrics) {
-    results.metrics.appLoadDuration = pageData.stencilAppLoadDuration;
+  if (pageAnalysis.metrics) {
+    pageAnalysis.metrics.appLoadDuration = pageData.stencilAppLoadDuration;
   }
+
+  return parseHtmlToDocument(pageData.html) as HTMLDocument;
 }
 
 
-function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
+function addPageListeners(page: puppeteer.Page, pageAnalysis: d.PageAnalysis) {
   page.on('pageerror', (err: any) => {
     if (err) {
       if (typeof err === 'string') {
-        results.pageErrors.push({
+        pageAnalysis.pageErrors.push({
           message: err
         });
 
       } else if (err.message) {
-        results.pageErrors.push({
+        pageAnalysis.pageErrors.push({
           message: err.message,
           stack: err.stack
         });
@@ -170,7 +187,7 @@ function addPageListeners(page: puppeteer.Page, results: d.PrerenderResults) {
   });
 
   page.on('error', err => {
-    catchError(results.diagnostics, err);
+    catchError(pageAnalysis.diagnostics, err);
   });
 }
 
@@ -231,7 +248,6 @@ interface StencilWindow {
 interface PageData {
   html: string;
   stencilAppLoadDuration: number;
-  url: string;
   path: string;
   pathname?: string;
   search?: string;
