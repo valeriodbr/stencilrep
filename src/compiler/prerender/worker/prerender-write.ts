@@ -1,4 +1,4 @@
-import * as d from '../../declarations';
+import * as d from '../../../declarations';
 import { serializeNodeToHtml } from '@stencil/core/mock-doc';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -25,26 +25,6 @@ export async function writePrerenderResults(input: d.PrerenderInput, pageAnalysi
       }
     });
   });
-}
-
-
-export async function finalizePrerenderResults(config: d.Config, dir: string) {
-  const items = await config.sys.fs.readdir(dir);
-
-  for (const item of items) {
-    const itemPath = config.sys.path.join(dir, item);
-
-    if (item.endsWith(`.prerendered`)) {
-      const newPath = itemPath.replace(`.prerendered`, '');
-      await config.sys.fs.rename(itemPath, newPath);
-
-    } else {
-      const stat = await config.sys.fs.stat(itemPath);
-      if (stat.isDirectory()) {
-        await finalizePrerenderResults(config, itemPath);
-      }
-    }
-  }
 }
 
 

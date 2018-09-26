@@ -1,14 +1,12 @@
 import * as d from '../../declarations';
 import { catchError, hasError } from '../util';
-import { closePuppeteerBrowser, ensurePuppeteer, startPuppeteerBrowser } from './puppeteer';
 import { getWritePathFromUrl, queuePathForPrerender } from './prerender-utils';
-import { prepareDocumentBeforePrerender } from './prerender-index-html';
-import * as puppeteer from 'puppeteer';
+import { prepareIndexHtmlBeforePrerender } from './prepare-index-html';
+import * as puppeteer from 'puppeteer'; // for types only
 
 
 export class PrerenderCtx {
   private browser: puppeteer.Browser = null;
-  private browserWsEndpoint: string;
   private devServerOrigin: string;
   private devServerHost: string;
   private prerenderingDone: Function;
@@ -28,12 +26,10 @@ export class PrerenderCtx {
 
     // fire up the puppeteer browser
     this.browser = await startPuppeteerBrowser(this.config);
-
-    this.browserWsEndpoint = this.browser.wsEndpoint();
   }
 
   async prepareIndexHtml() {
-    await prepareDocumentBeforePrerender(this.config, this.compilerCtx, this.buildCtx, this.outputTarget);
+    await prepareIndexHtmlBeforePrerender(this.config, this.compilerCtx, this.buildCtx, this.outputTarget);
   }
 
   async prerenderAll(paths: string[]) {
@@ -101,7 +97,7 @@ export class PrerenderCtx {
 
     try {
       const input: d.PrerenderInput = {
-        browserWsEndpoint: this.browserWsEndpoint,
+        browserWsEndpoint: this.browser.wsEndpoint(),
         devServerHost: this.devServerHost,
         url: this.devServerOrigin + path,
         path: path,
@@ -117,22 +113,25 @@ export class PrerenderCtx {
         // prerender this url and wait on the results
         const results = await this.config.sys.prerender(input);
 
-        this.buildCtx.diagnostics.push(...results.diagnostics);
+        if (results) {
 
-        if (!hasError(results.diagnostics)) {
+          if (!hasError(results.diagnostics)) {
 
-          if (this.outputTarget.prerenderUrlCrawl) {
-            // we do want to keep crawling urls
-            // add any urls we found to the queue to be prerendered still
-            results.anchorPaths.forEach(anchorPath => {
-              try {
-                queuePathForPrerender(this.config, this.outputTarget, this.queue, this.processing, this.completed, anchorPath);
-              } catch (e) {
-                catchError(this.buildCtx.diagnostics, e);
-              }
-            });
+            if (this.outputTarget.prerenderUrlCrawl && Array.isArray(results.anchorPaths)) {
+              // we do want to keep crawling urls
+              // add any urls we found to the queue to be prerendered still
+              results.anchorPaths.forEach(anchorPath => {
+                try {
+                  queuePathForPrerender(this.config, this.outputTarget, this.queue, this.processing, this.completed, anchorPath);
+                } catch (e) {
+                  catchError(this.buildCtx.diagnostics, e);
+                }
+              });
+            }
+
+          } else {
+            this.buildCtx.diagnostics.push(...results.diagnostics);
           }
-
         }
 
       } catch (e) {
@@ -186,4 +185,36 @@ function logFinished(logger: d.Logger, start: number, path: string) {
   }
 
   logger.info(`prerendered: ${path} ${logger.dim(time)}`);
+}
+
+
+async function startPuppeteerBrowser(config: d.Config) {
+  const ptr = config.sys.lazyRequire.require('puppeteer');
+
+  const launchOpts: puppeteer.LaunchOptions = {
+    ignoreHTTPSErrors: true,
+    headless: true
+  };
+
+  const browser = await ptr.launch(launchOpts) as puppeteer.Browser;
+  return browser;
+}
+
+
+async function closePuppeteerBrowser(browser: puppeteer.Browser) {
+  if (browser) {
+    try {
+      await browser.close();
+    } catch (e) {}
+  }
+}
+
+
+async function ensurePuppeteer(config: d.Config) {
+  const ensureModuleIds = [
+    '@types/puppeteer',
+    'puppeteer'
+  ];
+
+  await config.sys.lazyRequire.ensure(config.logger, config.rootDir, ensureModuleIds);
 }

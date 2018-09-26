@@ -7,7 +7,7 @@ import { attachMessageHandler } from './worker/worker-child';
 import { copyTasksWorker } from '../../compiler/copy/copy-tasks-worker';
 import { loadMinifyJsDiagnostics } from '../../util/logger/logger-minify-js';
 import { normalizePath } from '../../compiler/util';
-import { prerendeWorker } from '../../compiler/prerender/prerender-worker';
+import { prerenderWorker } from '../../compiler/prerender/worker/prerender-worker';
 import { requestLatestCompilerVersion } from './check-version';
 import { ShadowCss } from '../../compiler/style/shadow-css';
 import { transpileToEs5Worker } from '../../compiler/transpile/transpile-to-es5-worker';
@@ -107,7 +107,7 @@ export class NodeSystemWorker {
   }
 
   prerender(input: d.PrerenderInput) {
-    return prerendeWorker(input);
+    return prerenderWorker(input);
   }
 
   requestLatestCompilerVersion() {

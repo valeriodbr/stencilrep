@@ -1,5 +1,5 @@
-import * as d from '../../declarations';
-import * as puppeteer from 'puppeteer'; // for types only
+import * as d from '../../../declarations';
+import * as puppeteer from 'puppeteer';
 import { URL } from 'url';
 
 

@@ -4,12 +4,12 @@ import { minifyInlinedContent } from '../html/minify-inline-content';
 import { parseHtmlToDocument, serializeNodeToHtml } from '@stencil/core/mock-doc';
 
 
-export async function prepareDocumentBeforePrerender(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww) {
+export async function prepareIndexHtmlBeforePrerender(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww) {
   let indexHtml = await compilerCtx.fs.readFile(config.srcIndexHtml);
 
   const doc = parseHtmlToDocument(indexHtml);
 
-  await optimizeIndexForPrerender(config, compilerCtx, buildCtx, outputTarget, doc);
+  await prepareDocumentForPrerender(config, compilerCtx, buildCtx, outputTarget, doc);
 
   indexHtml = serializeNodeToHtml(doc, {
     pretty: outputTarget.prettyHtml,
@@ -22,17 +22,9 @@ export async function prepareDocumentBeforePrerender(config: d.Config, compilerC
 }
 
 
-export function finalizeDocumentAfterPrerender(doc: HTMLDocument) {
-  const prerenderPrepareScriptElm = doc.getElementById('prerender-prepare-script');
-  if (prerenderPrepareScriptElm) {
-    prerenderPrepareScriptElm.remove();
-  }
-}
-
-
-async function optimizeIndexForPrerender(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, doc: Document) {
-  optimizeDocumentElement(doc);
-  optimizeDocumentHead(doc, doc.head);
+async function prepareDocumentForPrerender(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, doc: Document) {
+  prepareDocumentElement(doc);
+  prepareDocumentHead(doc, doc.head);
 
   await minifyInlinedContent(config, compilerCtx, buildCtx, doc);
 
@@ -40,7 +32,7 @@ async function optimizeIndexForPrerender(config: d.Config, compilerCtx: d.Compil
 }
 
 
-function optimizeDocumentElement(doc: HTMLDocument) {
+function prepareDocumentElement(doc: HTMLDocument) {
   if (doc.documentElement) {
     if (!doc.documentElement.hasAttribute('lang')) {
       doc.documentElement.setAttribute('lang', 'en-US');
@@ -53,7 +45,7 @@ function optimizeDocumentElement(doc: HTMLDocument) {
 }
 
 
-function optimizeDocumentHead(doc: HTMLDocument, head: HTMLHeadElement) {
+function prepareDocumentHead(doc: HTMLDocument, head: HTMLHeadElement) {
   if (!head) {
     return;
   }

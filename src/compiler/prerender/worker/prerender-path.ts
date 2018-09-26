@@ -1,6 +1,6 @@
-import * as d from '../../declarations';
-import * as puppeteer from 'puppeteer'; // for types only
-import { catchError } from '../util';
+import * as d from '../../../declarations';
+import * as puppeteer from 'puppeteer';
+import { catchError } from '../../util';
 import { interceptRequests } from './prerender-requests';
 import { startPageAnalysis, stopPageAnalysis } from './page-analysis';
 import { parseHtmlToDocument } from '@stencil/core/mock-doc';
@@ -12,14 +12,12 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
   let browser: puppeteer.Browser = null;
 
   try {
-    const ptr = require('puppeteer');
-
     const connectOpts: puppeteer.ConnectOptions = {
       browserWSEndpoint: input.browserWsEndpoint,
       ignoreHTTPSErrors: true
     };
 
-    browser = await ptr.connect(connectOpts);
+    browser = await puppeteer.connect(connectOpts);
 
     // start up a new page
     page = await browser.newPage();
@@ -125,7 +123,7 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
     function setResolvedPaths(elm: Element) {
       if (elm.nodeType === 1) {
         // element
-        const tagName = elm.tagName.toLowerCase();
+        const tagName = elm.nodeName.toLowerCase();
 
         if (tagName === 'a') {
           setElementResolvedPath(elm, (elm as HTMLAnchorElement).href);
@@ -202,33 +200,6 @@ async function createAppLoadListener(page: puppeteer.Page) {
       (window as StencilWindow).stencilAppLoadDuration = (Date.now() - (window as StencilWindow).stencilWindowInit);
     });
   });
-}
-
-
-export async function startPuppeteerBrowser(config: d.Config) {
-  const ptr = config.sys.lazyRequire.require('puppeteer');
-
-  const launchOpts: puppeteer.LaunchOptions = {
-    ignoreHTTPSErrors: true,
-    headless: true
-  };
-
-  const browser = await ptr.launch(launchOpts) as puppeteer.Browser;
-  return browser;
-}
-
-
-export async function closePuppeteerBrowser(browser: puppeteer.Browser) {
-  if (browser) {
-    try {
-      await browser.close();
-    } catch (e) {}
-  }
-}
-
-
-export async function ensurePuppeteer(config: d.Config) {
-  await config.sys.lazyRequire.ensure(config.logger, config.rootDir, ['puppeteer']);
 }
 
 

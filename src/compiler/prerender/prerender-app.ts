@@ -1,6 +1,5 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
-import { finalizePrerenderResults } from './prerender-write';
 import { PrerenderCtx } from './prerender-ctx';
 
 
@@ -74,5 +73,25 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
 
   } else {
     timeSpan.finish(`prerendered urls: ${prerenderCtx.completed.size}`);
+  }
+}
+
+
+async function finalizePrerenderResults(config: d.Config, dir: string) {
+  const items = await config.sys.fs.readdir(dir);
+
+  for (const item of items) {
+    const itemPath = config.sys.path.join(dir, item);
+
+    if (item.endsWith(`.prerendered`)) {
+      const newPath = itemPath.replace(`.prerendered`, '');
+      await config.sys.fs.rename(itemPath, newPath);
+
+    } else {
+      const stat = await config.sys.fs.stat(itemPath);
+      if (stat.isDirectory()) {
+        await finalizePrerenderResults(config, itemPath);
+      }
+    }
   }
 }

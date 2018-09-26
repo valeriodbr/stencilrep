@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "alwaysStrict": true,
+    "allowSyntheticDefaultImports": true,
+    "allowUnreachableCode": false,
+    "declaration": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitHelpers": true,
+    "importHelpers": true,
+    "lib": [
+      "dom",
+      "es2017"
+    ],
+    "module": "es2015",
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "outDir": "../../../../dist/transpiled-prerender-worker",
+    "pretty": true,
+    "rootDir": "../../../",
+    "baseUrl": ".",
+    "paths": {
+      "@stencil/core/mock-doc": [
+        "../../../../dist/mock-doc"
+      ]
+    },
+    "target": "es2015"
+  },
+  "include": [
+    "../../../../types/*.d.ts"
+  ],
+  "files": [
+    "./prerender-path.ts"
+  ]
+}
