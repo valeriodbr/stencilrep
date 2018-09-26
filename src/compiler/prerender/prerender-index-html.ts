@@ -15,7 +15,6 @@ export async function prepareDocumentBeforePrerender(config: d.Config, compilerC
     pretty: outputTarget.prettyHtml,
     collapseBooleanAttributes: !outputTarget.prettyHtml,
     removeAttributeQuotes: !outputTarget.prettyHtml,
-    removeHtmlComments: !outputTarget.prettyHtml,
     removeEmptyAttributes: !outputTarget.prettyHtml
   });
 

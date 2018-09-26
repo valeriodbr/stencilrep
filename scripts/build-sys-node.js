@@ -18,7 +18,7 @@ if (transpileSuccess) {
   // bundle external deps
   bundleExternal('open-in-editor.js');
   bundleExternal('sys-util.js');
-  // bundleExternal('sys-worker.js');
+  bundleExternal('sys-worker.js');
   bundleExternal('websocket.js');
 
   // bundle sys.node
@@ -36,25 +36,23 @@ if (transpileSuccess) {
   process.on('exit', () => {
     fs.removeSync(TRANSPILED_DIR);
   });
-  bundleNodeSysWorker();
 }
 
 
 function bundleExternal(entryFileName) {
-  const mockDoc = path.resolve(__dirname, '..', 'dist', 'mock-doc');
+  const outputDir = path.join(__dirname, '..', 'dist', 'sys', 'node');
   const whitelist = [
     'child_process',
     'os',
     'puppeteer',
     'typescript',
-    '@stencil/core/mock-doc',
-    // mockDoc
+    '@stencil/core/mock-doc'
   ];
 
   webpack({
     entry: path.join(__dirname, '..', 'src', 'sys', 'node', 'bundles', entryFileName),
     output: {
-      path: path.join(__dirname, '..', 'dist', 'sys', 'node'),
+      path: outputDir,
       filename: entryFileName,
       libraryTarget: 'commonjs'
     },
@@ -65,11 +63,6 @@ function bundleExternal(entryFileName) {
       process: false,
       Buffer: false
     },
-    // resolve: {
-    //   alias: {
-    //     '@stencil/core/mock-doc': mockDoc
-    //   }
-    // },
     externals: function(context, request, callback) {
       if (request.match(/^(\.{0,2})\//)) {
         // absolute and relative paths are not externals
@@ -78,7 +71,6 @@ function bundleExternal(entryFileName) {
 
       if (whitelist.indexOf(request) > -1) {
         // we specifically do not want to bundle these imports
-        require.resolve(request);
         return callback(null, request);
       }
 
@@ -103,6 +95,12 @@ function bundleExternal(entryFileName) {
     if (stats.hasErrors()) {
       console.error(info.errors);
     } else {
+
+      const filePath = path.join(outputDir, entryFileName);
+      let content = fs.readFileSync(filePath, 'utf8');
+      content = content.replace('@stencil/core/mock-doc', '../../mock-doc/index.js');
+      fs.writeFileSync(filePath, content);
+
       console.log(`✅ sys.node: ${entryFileName}`);
     }
   });
@@ -168,85 +166,6 @@ function bundleNodeSysMain() {
 
     }).then(() => {
       console.log(`✅ sys.node: ${fileName}`);
-
-    }).catch(err => {
-      console.error(`build sys.node error: ${err}`);
-      process.exit(1);
-    });
-
-  }).catch(err => {
-    console.error(`build sys.node error: ${err}`);
-    process.exit(1);
-  });
-}
-
-function bundleNodeSysWorker() {
-  const inputPath = path.join(TRANSPILED_DIR, 'sys', 'node', 'node-sys-worker.js');
-  const outputPath = path.join(ROOT_DIR, 'dist', 'sys', 'node', 'sys-worker.js');
-
-  rollup.rollup({
-    input: inputPath,
-    external: [
-      'child_process',
-      'crypto',
-      'events',
-      'fs',
-      'http',
-      'https',
-      'path',
-      'puppeteer',
-      'os',
-      'typescript',
-      'url',
-      '../../mock-doc'
-    ],
-    plugins: [
-      (() => {
-        return {
-          resolveId(id) {
-            if (id === '@stencil/core/mock-doc') {
-              return '../../mock-doc';
-            }
-          }
-        }
-      })(),
-      rollupResolve(),
-      rollupCommonjs({
-        namedExports: {
-          'terser/dist/browser.bundle.js': [ 'minify' ]
-        }
-      })
-    ],
-    onwarn: (message) => {
-      if (message.code === 'UNUSED_EXTERNAL_IMPORT') return;
-      if (message.code === 'CIRCULAR_DEPENDENCY') return;
-      console.error( message );
-    }
-
-  }).then(bundle => {
-
-    return bundle.generate({
-      format: 'cjs',
-      file: outputPath
-
-    }).then(output => {
-      try {
-        let outputText = output.code;
-
-        const buildId = (process.argv.find(a => a.startsWith('--build-id=')) || '').replace('--build-id=', '');
-        outputText = outputText.replace(/__BUILDID__/g, buildId);
-
-        // outputText = outputText.replace('@stencil/core/mock-doc', '../../mock-doc/index.js');
-
-        fs.ensureDirSync(path.dirname(outputPath));
-        fs.writeFileSync(outputPath, outputText);
-
-      } catch (e) {
-        console.error(`build sys.node error: ${e}`);
-      }
-
-    }).then(() => {
-      console.log(`✅ sys.node.worker`);
 
     }).catch(err => {
       console.error(`build sys.node error: ${err}`);
