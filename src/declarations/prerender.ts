@@ -2,7 +2,7 @@ import * as d from '.';
 
 
 export interface PrerenderInput {
-  browserWsEndpoint: string;
+  browserWSEndpoint: string;
   devServerHost: string;
   url: string;
   path: string;

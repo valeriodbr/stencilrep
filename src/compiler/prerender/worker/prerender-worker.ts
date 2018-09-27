@@ -40,9 +40,6 @@ export async function prerenderWorker(input: d.PrerenderInput) {
       // let's optimize the document node even further
       await optimizePrerenderedDocument(doc);
 
-      // get all of the resolved anchor urls to continue to crawllll
-      extractResolvedAnchorUrls(results.anchorPaths, doc.body);
-
       // no errors, write out the results and modify the html as needed
       await writePrerenderResults(input, pageAnalysis, doc);
     }
@@ -56,36 +53,6 @@ export async function prerenderWorker(input: d.PrerenderInput) {
   }
 
   return results;
-}
-
-
-function extractResolvedAnchorUrls(anchorUrls: string[], elm: Element) {
-  if (elm) {
-
-    if (elm.nodeName === 'A') {
-      const resolvedAnchorUrl = elm.getAttribute('data-resolved-path');
-      if (resolvedAnchorUrl) {
-        if (!anchorUrls.includes(resolvedAnchorUrl)) {
-          anchorUrls.push(resolvedAnchorUrl);
-        }
-        elm.removeAttribute('data-resolved-path');
-      }
-    }
-
-    if (elm.shadowRoot) {
-      const children = elm.shadowRoot.children;
-      for (let i = 0; i < children.length; i++) {
-        extractResolvedAnchorUrls(anchorUrls, children[i]);
-      }
-    }
-
-    const children = elm.children as any;
-    if (children) {
-      for (let i = 0; i < children.length; i++) {
-        extractResolvedAnchorUrls(anchorUrls, children[i]);
-      }
-    }
-  }
 }
 
 

@@ -20,7 +20,7 @@
     "noUnusedParameters": true,
     "outDir": "../../../../dist/transpiled-prerender-worker",
     "pretty": true,
-    "rootDir": "../../../",
+    "rootDir": "../../../../",
     "baseUrl": ".",
     "paths": {
       "@stencil/core/mock-doc": [
@@ -33,6 +33,7 @@
     "../../../../types/*.d.ts"
   ],
   "files": [
-    "./prerender-path.ts"
+    "./prerender-path.ts",
+    "./prerender-write.ts"
   ]
 }

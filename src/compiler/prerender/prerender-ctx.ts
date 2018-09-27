@@ -51,8 +51,8 @@ export class PrerenderCtx {
     });
   }
 
-  next() {
-    setTimeout(() => {
+  async next() {
+    process.nextTick(() => {
       this.compilerCtx.events.emit('prerenderedLocation');
     });
   }
@@ -78,7 +78,7 @@ export class PrerenderCtx {
       }
 
       const path = this.queue.shift();
-      if (!path) {
+      if (!path || this.processing.has(path) || this.completed.has(path)) {
         // no pending paths in the queue, let's chill out
         // there's probably some in the processing still being worked on
         return;
@@ -97,7 +97,7 @@ export class PrerenderCtx {
 
     try {
       const input: d.PrerenderInput = {
-        browserWsEndpoint: this.browser.wsEndpoint(),
+        browserWSEndpoint: this.browser.wsEndpoint(),
         devServerHost: this.devServerHost,
         url: this.devServerOrigin + path,
         path: path,
@@ -110,12 +110,15 @@ export class PrerenderCtx {
       };
 
       try {
+        // throw this over the wall to another process
         // prerender this url and wait on the results
         const results = await this.config.sys.prerender(input);
 
+        // finally got the results from the worker
         if (results) {
 
           if (!hasError(results.diagnostics)) {
+            // no issues prerendering!
 
             if (this.outputTarget.prerenderUrlCrawl && Array.isArray(results.anchorPaths)) {
               // we do want to keep crawling urls
@@ -130,24 +133,29 @@ export class PrerenderCtx {
             }
 
           } else {
+            // derp, we had problems during prerendering
             this.buildCtx.diagnostics.push(...results.diagnostics);
           }
         }
 
       } catch (e) {
+        // big error, idk
         catchError(this.buildCtx.diagnostics, e);
       }
+
+    } catch (e) {
+      // big big error, idk
+      catchError(this.buildCtx.diagnostics, e);
+
+    } finally {
+      // totally done processing this path, so remove
+      // it from the processing set and add to completed set
 
       // we're done processing now
       this.processing.delete(path);
 
       // consider it completed
       this.completed.add(path);
-
-    } catch (e) {
-      this.processing.delete(path);
-      this.completed.add(path);
-      catchError(this.buildCtx.diagnostics, e);
     }
 
     logFinished(this.config.logger, start, path);

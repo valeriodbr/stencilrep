@@ -13,10 +13,12 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
 
   try {
     const connectOpts: puppeteer.ConnectOptions = {
-      browserWSEndpoint: input.browserWsEndpoint,
+      browserWSEndpoint: input.browserWSEndpoint,
       ignoreHTTPSErrors: true
     };
 
+    // connect to the existing browser instance
+    // using the provided browserWSEndpoint
     browser = await puppeteer.connect(connectOpts);
 
     // start up a new page
@@ -85,6 +87,7 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
     // data object to build up and pass back from the browser to main
     const pageData: PageData = {
       html: '',
+      anchorPaths: [],
       path: locationUrl.pathname,
       stencilAppLoadDuration: (window as StencilWindow).stencilAppLoadDuration
     };
@@ -103,20 +106,28 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
       }
     }
 
-    function setElementResolvedPath(elm: Node, href: string) {
+    function getResolvedPath(href: string) {
+      let path: string = null;
       if (href) {
         const url = new URL(href);
 
         if (url.host === locationUrl.host) {
-          let path = url.pathname;
+          path = url.pathname;
           if (pageUpdateConfig.pathQuery) {
             path += url.search;
           }
           if (pageUpdateConfig.pathHash) {
             path += url.hash;
           }
-          (elm as HTMLScriptElement).setAttribute('data-resolved-path', path);
         }
+      }
+      return path;
+    }
+
+    function setElementResolvedPath(elm: Node, href: string) {
+      const path = getResolvedPath(href);
+      if (path) {
+        (elm as HTMLElement).setAttribute('data-resolved-path', path);
       }
     }
 
@@ -126,7 +137,10 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
         const tagName = elm.nodeName.toLowerCase();
 
         if (tagName === 'a') {
-          setElementResolvedPath(elm, (elm as HTMLAnchorElement).href);
+          const path = getResolvedPath((elm as HTMLAnchorElement).href);
+          if (path && !pageData.anchorPaths.includes(path)) {
+            pageData.anchorPaths.push(path);
+          }
 
         } else if (tagName === 'script') {
           setElementResolvedPath(elm, (elm as HTMLScriptElement).src);
@@ -136,8 +150,10 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
         }
       }
 
-      if (elm.shadowRoot && elm.shadowRoot.nodeType === 11) {
-        setResolvedPaths(elm.shadowRoot as any);
+      if (elm.shadowRoot && elm.shadowRoot.children) {
+        for (let i = 0, l = elm.shadowRoot.children.length; i < l; i++) {
+          setResolvedPaths(elm.shadowRoot.children[i]);
+        }
       }
 
       for (let i = 0, l = elm.children.length; i < l; i++) {
@@ -158,6 +174,7 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
   pageAnalysis.pathname = pageData.pathname;
   pageAnalysis.search = pageData.search;
   pageAnalysis.hash = pageData.hash;
+  pageAnalysis.anchorPaths = pageData.anchorPaths;
 
   if (pageAnalysis.metrics) {
     pageAnalysis.metrics.appLoadDuration = pageData.stencilAppLoadDuration;
@@ -218,6 +235,7 @@ interface StencilWindow {
 
 interface PageData {
   html: string;
+  anchorPaths: string[];
   stencilAppLoadDuration: number;
   path: string;
   pathname?: string;
