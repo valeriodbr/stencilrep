@@ -241,7 +241,7 @@ export class NodeSystem implements d.StencilSystem {
   }
 
   get color() {
-    return this.sysUtil.turbocolor;
+    return this.sysUtil.color;
   }
 
   get semver() {
