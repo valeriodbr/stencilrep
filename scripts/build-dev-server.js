@@ -40,7 +40,9 @@ if (success) {
         'zlib'
       ],
       plugins: [
-        rollupResolve(),
+        rollupResolve({
+          preferBuiltins: true,
+        }),
         rollupCommonjs()
       ],
       onwarn: (message) => {

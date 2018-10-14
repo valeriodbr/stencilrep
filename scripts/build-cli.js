@@ -26,7 +26,9 @@ if (success) {
         'path'
       ],
       plugins: [
-        rollupResolve(),
+        rollupResolve({
+          preferBuiltins: true,
+        }),
         rollupCommonjs()
       ],
       onwarn: (message) => {

@@ -4,6 +4,7 @@ const webpack = require('webpack');
 const rollup = require('rollup');
 const rollupResolve = require('rollup-plugin-node-resolve');
 const rollupCommonjs = require('rollup-plugin-commonjs');
+const rollupJson = require('rollup-plugin-json');
 const glob = require('glob');
 const transpile = require('./transpile');
 
@@ -141,8 +142,8 @@ function bundleNodeSysMain() {
       rollupResolve({
         preferBuiltins: true,
       }),
-      rollupResolve(),
-      rollupCommonjs()
+      rollupCommonjs(),
+      rollupJson()
     ],
     onwarn: (message) => {
       if (/top level of an ES module/.test(message)) return;

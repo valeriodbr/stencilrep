@@ -36,7 +36,9 @@ if (success) {
         'child_process'
       ],
       plugins: [
-        rollupResolve(),
+        rollupResolve({
+          preferBuiltins: true,
+        }),
         rollupCommonjs(),
         rollupPluginReplace({
           values: replaceObj
