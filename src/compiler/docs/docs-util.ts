@@ -13,7 +13,7 @@ export class MarkdownTable {
 
     data.forEach(text => {
       const col: ColumnData = {
-        text: text.replace(/\r?\n/g, ' '),
+        text: escapeMarkdownTableColumn(text),
         width: text.length
       };
       colData.push(col);
@@ -29,6 +29,13 @@ export class MarkdownTable {
     return createTable(this.rows);
   }
 
+}
+
+
+function escapeMarkdownTableColumn(text: string) {
+  text = text.replace(/\r?\n/g, ' ');
+  text = text.replace(/\|/g, '\\|');
+  return text;
 }
 
 
@@ -156,4 +163,41 @@ export function getMemberDocumentation(jsDoc: d.JsDoc) {
     return jsDoc.documentation.trim();
   }
   return '';
+}
+
+export function getPlatform(jsDoc: d.JsDoc) {
+  const tag = jsDoc.tags.find(t => t.name === 'platform');
+  return tag.text || 'all';
+}
+
+export function isMemberInternal(jsDoc: d.JsDoc) {
+  return jsDoc && jsDoc.tags && jsDoc.tags.find(p => p.name === 'internal');
+}
+
+export function getMemberType(jsDoc: d.JsDoc) {
+  if (jsDoc && typeof jsDoc.type === 'string') {
+    return jsDoc.type.trim();
+  }
+  return '';
+}
+
+export function getMethodParameters({ parameters }: d.JsDoc): d.JsonDocMethodParameter[] {
+  if (parameters) {
+    return parameters.map(({ name, type, documentation }) => ({
+      name,
+      type,
+      docs: documentation
+    }));
+  }
+  return [];
+}
+
+export function getMethodReturns({ returns }: d.JsDoc): d.JsonDocsMethodReturn {
+  if (returns) {
+    return {
+      type: returns.type,
+      docs: returns.documentation
+    };
+  }
+  return null;
 }

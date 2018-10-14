@@ -6,7 +6,7 @@ export async function taskTest(config: d.Config) {
   const ensureModuleIds = [
     '@types/jest',
     'jest',
-    'jest-environment-node',
+    'jest-cli'
   ];
 
   if (config.flags && config.flags.e2e) {
@@ -14,8 +14,7 @@ export async function taskTest(config: d.Config) {
     // puppeteer modules installed
     ensureModuleIds.push(
       '@types/puppeteer',
-      'puppeteer',
-      'pixelmatch'
+      'puppeteer'
     );
 
     if (config.flags.screenshot) {

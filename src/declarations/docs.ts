@@ -8,6 +8,7 @@ export interface JsonDocs {
 export interface JsonDocsComponent {
   tag?: string;
   readme?: string;
+  docs?: string,
   usage?: JsonDocsUsage;
   props?: JsonDocsProp[];
   methods?: JsonDocsMethod[];
@@ -34,8 +35,20 @@ export interface JsonDocsProp {
 export interface JsonDocsMethod {
   name: string;
   docs?: string;
+  returns?: JsonDocsMethodReturn;
+  parameters?: JsonDocMethodParameter[];
 }
 
+export interface JsonDocsMethodReturn {
+  type?: string;
+  docs?: string;
+}
+
+export interface JsonDocMethodParameter {
+  name?: string;
+  type?: string;
+  docs?: string;
+}
 
 export interface JsonDocsEvent {
   event: string;

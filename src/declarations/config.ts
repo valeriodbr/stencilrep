@@ -218,6 +218,8 @@ export interface NodeResolveConfig {
 export interface ConfigFlags {
   task?: 'build' | 'docs' | 'help' | 'serve' | 'test';
   args?: string[];
+  knownArgs?: string[];
+  unknownArgs?: string[];
   address?: string;
   build?: boolean;
   cache?: boolean;
@@ -230,6 +232,7 @@ export interface ConfigFlags {
   docs?: boolean;
   docsJson?: string;
   e2e?: boolean;
+  emulate?: string;
   es5?: boolean;
   headless?: boolean;
   help?: boolean;

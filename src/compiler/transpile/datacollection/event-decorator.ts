@@ -2,7 +2,7 @@ import * as d from '../../../declarations';
 import { buildWarn } from '../../util';
 import { getAttributeTypeInfo, serializeSymbol } from './utils';
 import { getDeclarationParameters, isDecoratorNamed, isPropertyWithDecorators } from './utils';
-import * as ts from 'typescript';
+import ts from 'typescript';
 
 
 export function getEventDecoratorMeta(diagnostics: d.Diagnostic[], checker: ts.TypeChecker, classNode: ts.ClassDeclaration, sourceFile: ts.SourceFile) {
@@ -33,7 +33,6 @@ export function getEventDecoratorMeta(diagnostics: d.Diagnostic[], checker: ts.T
       if (metadata) {
         const symbol = checker.getSymbolAtLocation(member.name);
         metadata.jsdoc = serializeSymbol(checker, symbol);
-
         metadata.jsdoc.name = metadata.eventName;
 
         membersMeta.push(metadata);

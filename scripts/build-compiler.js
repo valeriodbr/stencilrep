@@ -34,15 +34,9 @@ if (success) {
       external: [
         'crypto',
         'fs',
-        '../mock-doc',
         'path',
-        'rollup',
-        'rollup-plugin-commonjs',
-        'rollup-plugin-node-resolve',
-        'rollup-plugin-node-builtins',
-        'rollup-pluginutils',
         'typescript',
-        'util'
+        '../mock-doc'
       ],
       plugins: [
         (() => {
@@ -54,7 +48,9 @@ if (success) {
             }
           }
         })(),
-        rollupResolve(),
+        rollupResolve({
+          preferBuiltins: true
+        }),
         rollupCommonjs(),
         rollupPluginReplace({
           values: replaceObj

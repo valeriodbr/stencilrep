@@ -2,31 +2,59 @@ import * as d from '.';
 
 
 export interface ScreenshotConnector {
-  initBuild(opts: ScreenshotConnectorOptions): Promise<void>;
-  completeBuild(): Promise<void>;
-  publishBuild(): Promise<void>;
-  getComparisonSummaryUrl(): string;
-  getTotalScreenshotImages(): number;
-  toJson(): string;
+  initBuild(opts: d.ScreenshotConnectorOptions): Promise<void>;
+  completeBuild(masterBuild: d.ScreenshotBuild): Promise<ScreenshotBuildResults>;
+  getMasterBuild(): Promise<d.ScreenshotBuild>;
+  pullMasterBuild(): Promise<void>;
+  publishBuild(buildResults: d.ScreenshotBuildResults): Promise<d.ScreenshotBuildResults>;
+  generateJsonpDataUris(build: d.ScreenshotBuild): Promise<void>;
+  sortScreenshots(screenshots: d.Screenshot[]): d.Screenshot[];
+  toJson(masterBuild: d.ScreenshotBuild): string;
+}
+
+
+export interface ScreenshotBuildResults {
+  masterBuild: d.ScreenshotBuild;
+  currentBuild: d.ScreenshotBuild;
+  compare: ScreenshotCompareResults;
+}
+
+
+export interface ScreenshotCompareResults {
+  id: string;
+  a: {
+    id: string;
+    message: string;
+    author: string;
+    url: string;
+  };
+  b: {
+    id: string;
+    message: string;
+    author: string;
+    url: string;
+  };
+  timestamp: number;
+  url: string;
+  diffs: d.ScreenshotDiff[];
 }
 
 
 export interface ScreenshotConnectorOptions {
-  rootDir: string;
-  cacheDir: string;
-  compareAppDir: string;
-  logger: d.Logger;
-  screenshotDirName?: string;
-  masterDirName?: string;
-  localDirName?: string;
-  compareAppFileName?: string;
-  imagesDirName?: string;
   buildId: string;
   buildMessage: string;
+  buildAuthor?: string;
+  buildUrl?: string;
+  buildTimestamp: number;
+  logger: d.Logger;
+  rootDir: string;
+  cacheDir: string;
+  packageDir: string;
+  screenshotDirName?: string;
+  imagesDirName?: string;
+  buildsDirName?: string;
+  currentBuildDir?: string;
   updateMaster?: boolean;
-  gitIgnoreImages?: boolean;
-  gitIgnoreLocal?: boolean;
-  gitIgnoreCompareApp?: boolean;
   allowableMismatchedPixels?: number;
   allowableMismatchedRatio?: number;
   pixelmatchThreshold?: number;
@@ -34,65 +62,62 @@ export interface ScreenshotConnectorOptions {
 
 
 export interface ScreenshotBuildData {
-  id: string;
+  buildId: string;
   rootDir: string;
   cacheDir: string;
-  screenshotDirPath: string;
-  imagesDirPath: string;
-  masterDirPath: string;
-  localDirPath: string;
+  screenshotDir: string;
+  imagesDir: string;
+  buildsDir: string;
+  currentBuildDir: string;
   updateMaster: boolean;
-  compareUrlTemplate: string;
   allowableMismatchedPixels: number;
   allowableMismatchedRatio: number;
   pixelmatchThreshold: number;
+  masterScreenshots: {[screenshotId: string]: string};
 }
 
 
 export interface ScreenshotBuild {
   id: string;
   message: string;
-  screenshots: ScreenshotData[];
+  author?: string;
+  url?: string;
+  timestamp: number;
+  screenshots: Screenshot[];
 }
 
 
-export interface ScreenshotData {
+export interface Screenshot {
   id: string;
-  desc: string;
+  desc?: string;
   image: string;
   device?: string;
   userAgent?: string;
   width?: number;
   height?: number;
   deviceScaleFactor?: number;
-  naturalWidth?: number;
-  naturalHeight?: number;
   hasTouch?: boolean;
   isLandscape?: boolean;
   isMobile?: boolean;
-  mediaType?: string;
   testPath?: string;
+  diff?: ScreenshotDiff;
 }
 
 
-export interface ScreenshotCompare {
+export interface ScreenshotDiff {
   mismatchedPixels: number;
-  mismatchedRatio: number;
   id?: string;
   desc?: string;
-  expectedImage?: string;
-  receivedImage?: string;
+  imageA?: string;
+  imageB?: string;
   device?: string;
   userAgent?: string;
   width?: number;
   height?: number;
   deviceScaleFactor?: number;
-  naturalWidth?: number;
-  naturalHeight?: number;
   hasTouch?: boolean;
   isLandscape?: boolean;
   isMobile?: boolean;
-  mediaType?: string;
   allowableMismatchedPixels: number;
   allowableMismatchedRatio: number;
   testPath?: string;

@@ -1,7 +1,8 @@
 import * as d from '../declarations';
 import { getLoaderPath } from '../compiler/app/app-file-naming';
 import { hasError } from '../compiler/util';
-import { runJest, setupJestConfig } from './jest/jest-runner';
+import { runJest } from './jest/jest-runner';
+import { runJestScreenshot } from './jest/jest-screenshot';
 import { startPuppeteerBrowser } from './puppeteer/puppeteer-browser';
 import * as puppeteer from 'puppeteer';
 
@@ -12,7 +13,6 @@ export class Testing implements d.Testing {
   config: d.Config;
   devServer: d.DevServer;
   puppeteerBrowser: puppeteer.Browser;
-  jestConfigPath: string;
 
   constructor(config: d.Config) {
     const { Compiler } = require('../compiler/index.js');
@@ -53,6 +53,7 @@ export class Testing implements d.Testing {
 
     if (config.flags.spec) {
       msg.push('spec');
+      env.__STENCIL_SPEC_TESTS__ = 'true';
     }
 
     config.logger.info(config.logger.magenta(`testing ${msg.join(' and ')} files`));
@@ -67,10 +68,6 @@ export class Testing implements d.Testing {
         config.logger.info(config.logger.magenta(`comparing against master screenshots`));
       }
     }
-
-    const jestEnvNodeModule = config.sys.lazyRequire.getModulePath('jest-environment-node');
-    env.__STENCIL_JEST_ENVIRONMENT_NODE_MODULE__ = jestEnvNodeModule;
-    config.logger.debug(`jest-environment-node: ${jestEnvNodeModule}`);
 
     if (config.flags.e2e) {
       // e2e tests only
@@ -109,23 +106,25 @@ export class Testing implements d.Testing {
       }
     }
 
-    this.jestConfigPath = await setupJestConfig(config);
+    let passed = false;
 
-    const passed = await runJest(config, env, this.jestConfigPath, doScreenshots);
+    try {
+      if (doScreenshots) {
+        passed = await runJestScreenshot(config, env);
+      } else {
+        passed = await runJest(config, env);
+      }
+      config.logger.info('');
 
-    config.logger.info('');
+    } catch (e) {
+      config.logger.error(e);
+    }
 
     return passed;
   }
 
   async destroy() {
     if (this.config) {
-      if (this.jestConfigPath) {
-        try {
-          await this.config.sys.fs.unlink(this.jestConfigPath);
-        } catch (e) {}
-      }
-
       this.config.sys.destroy();
       this.config = null;
     }

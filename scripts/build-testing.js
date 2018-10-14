@@ -3,6 +3,7 @@ const path = require('path');
 const rollup = require('rollup');
 const rollupResolve = require('rollup-plugin-node-resolve');
 const rollupCommonjs = require('rollup-plugin-commonjs');
+const rollupJson = require('rollup-plugin-json');
 const transpile = require('./transpile');
 const { getDefaultBuildConditionals, rollupPluginReplace } = require('../dist/transpiled-build-conditionals/build-conditionals');
 
@@ -27,21 +28,28 @@ if (success) {
     rollup.rollup({
       input: ENTRY_FILE,
       external: [
+        'assert',
+        'buffer',
         'child_process',
+        'console',
+        'constants',
         'crypto',
         'fs',
-        'jest-environment-node',
+        'jest-cli',
         'os',
         'path',
-        'pixelmatch',
-        'pngjs',
+        'process',
         'puppeteer',
         'rollup',
         'rollup-plugin-commonjs',
         'rollup-plugin-node-resolve',
-        'rollup-plugin-node-builtins',
         'rollup-pluginutils',
+        'stream',
         'typescript',
+        'util',
+        'vm',
+        'yargs',
+        'zlib',
         '../mock-doc'
       ],
       plugins: [
@@ -54,8 +62,11 @@ if (success) {
             }
           }
         })(),
-        rollupResolve(),
+        rollupResolve({
+          preferBuiltins: true
+        }),
         rollupCommonjs(),
+        rollupJson(),
         rollupPluginReplace({
           values: replaceObj
         })

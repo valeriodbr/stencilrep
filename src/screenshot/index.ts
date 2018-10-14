@@ -1,3 +1,4 @@
 
-export { ScreenshotConnector } from './screenshot-connector';
-export { ScreenshotBuild, ScreenshotData } from '../declarations';
+export { ScreenshotConnector } from './connector-base';
+export { ScreenshotLocalConnector } from './connector-local';
+export { ScreenshotBuild, Screenshot, ScreenshotCompareResults, ScreenshotDiff } from '../declarations';

@@ -46,7 +46,7 @@ export namespace Components {
     'bool0': boolean;
     'bool1': boolean;
     'bool2': boolean;
-    'getInstance': () => this;
+    'getInstance': () => Promise<this>;
     'nu0': number;
     'nu1': number;
     'str0': string;
@@ -189,6 +189,9 @@ export namespace Components {
   interface LifecycleUnloadRoot {}
   interface LifecycleUnloadRootAttributes extends StencilHTMLAttributes {}
 
+  interface NodeGlobals {}
+  interface NodeGlobalsAttributes extends StencilHTMLAttributes {}
+
   interface ReflectToAttr {
     'bool': boolean;
     'dynamicNu': number;
@@ -209,6 +212,12 @@ export namespace Components {
     'str'?: string;
     'undef'?: string;
   }
+
+  interface ScopedBasicRoot {}
+  interface ScopedBasicRootAttributes extends StencilHTMLAttributes {}
+
+  interface ScopedBasic {}
+  interface ScopedBasicAttributes extends StencilHTMLAttributes {}
 
   interface ShadowDomArrayRoot {}
   interface ShadowDomArrayRootAttributes extends StencilHTMLAttributes {}
@@ -373,7 +382,10 @@ declare global {
     'LifecycleUnloadA': Components.LifecycleUnloadA;
     'LifecycleUnloadB': Components.LifecycleUnloadB;
     'LifecycleUnloadRoot': Components.LifecycleUnloadRoot;
+    'NodeGlobals': Components.NodeGlobals;
     'ReflectToAttr': Components.ReflectToAttr;
+    'ScopedBasicRoot': Components.ScopedBasicRoot;
+    'ScopedBasic': Components.ScopedBasic;
     'ShadowDomArrayRoot': Components.ShadowDomArrayRoot;
     'ShadowDomArray': Components.ShadowDomArray;
     'ShadowDomBasicRoot': Components.ShadowDomBasicRoot;
@@ -441,7 +453,10 @@ declare global {
     'lifecycle-unload-a': Components.LifecycleUnloadAAttributes;
     'lifecycle-unload-b': Components.LifecycleUnloadBAttributes;
     'lifecycle-unload-root': Components.LifecycleUnloadRootAttributes;
+    'node-globals': Components.NodeGlobalsAttributes;
     'reflect-to-attr': Components.ReflectToAttrAttributes;
+    'scoped-basic-root': Components.ScopedBasicRootAttributes;
+    'scoped-basic': Components.ScopedBasicAttributes;
     'shadow-dom-array-root': Components.ShadowDomArrayRootAttributes;
     'shadow-dom-array': Components.ShadowDomArrayAttributes;
     'shadow-dom-basic-root': Components.ShadowDomBasicRootAttributes;
@@ -659,10 +674,28 @@ declare global {
     new (): HTMLLifecycleUnloadRootElement;
   };
 
+  interface HTMLNodeGlobalsElement extends Components.NodeGlobals, HTMLStencilElement {}
+  var HTMLNodeGlobalsElement: {
+    prototype: HTMLNodeGlobalsElement;
+    new (): HTMLNodeGlobalsElement;
+  };
+
   interface HTMLReflectToAttrElement extends Components.ReflectToAttr, HTMLStencilElement {}
   var HTMLReflectToAttrElement: {
     prototype: HTMLReflectToAttrElement;
     new (): HTMLReflectToAttrElement;
+  };
+
+  interface HTMLScopedBasicRootElement extends Components.ScopedBasicRoot, HTMLStencilElement {}
+  var HTMLScopedBasicRootElement: {
+    prototype: HTMLScopedBasicRootElement;
+    new (): HTMLScopedBasicRootElement;
+  };
+
+  interface HTMLScopedBasicElement extends Components.ScopedBasic, HTMLStencilElement {}
+  var HTMLScopedBasicElement: {
+    prototype: HTMLScopedBasicElement;
+    new (): HTMLScopedBasicElement;
   };
 
   interface HTMLShadowDomArrayRootElement extends Components.ShadowDomArrayRoot, HTMLStencilElement {}
@@ -900,7 +933,10 @@ declare global {
     'lifecycle-unload-a': HTMLLifecycleUnloadAElement
     'lifecycle-unload-b': HTMLLifecycleUnloadBElement
     'lifecycle-unload-root': HTMLLifecycleUnloadRootElement
+    'node-globals': HTMLNodeGlobalsElement
     'reflect-to-attr': HTMLReflectToAttrElement
+    'scoped-basic-root': HTMLScopedBasicRootElement
+    'scoped-basic': HTMLScopedBasicElement
     'shadow-dom-array-root': HTMLShadowDomArrayRootElement
     'shadow-dom-array': HTMLShadowDomArrayElement
     'shadow-dom-basic-root': HTMLShadowDomBasicRootElement
@@ -968,7 +1004,10 @@ declare global {
     'lifecycle-unload-a': HTMLLifecycleUnloadAElement;
     'lifecycle-unload-b': HTMLLifecycleUnloadBElement;
     'lifecycle-unload-root': HTMLLifecycleUnloadRootElement;
+    'node-globals': HTMLNodeGlobalsElement;
     'reflect-to-attr': HTMLReflectToAttrElement;
+    'scoped-basic-root': HTMLScopedBasicRootElement;
+    'scoped-basic': HTMLScopedBasicElement;
     'shadow-dom-array-root': HTMLShadowDomArrayRootElement;
     'shadow-dom-array': HTMLShadowDomArrayElement;
     'shadow-dom-basic-root': HTMLShadowDomBasicRootElement;

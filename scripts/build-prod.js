@@ -18,7 +18,6 @@ function minify(filePath) {
 const DIST = path.join(__dirname, '..', 'dist');
 [
   path.join(DIST, 'sys', 'node', 'open-in-editor.js'),
-  path.join(DIST, 'sys', 'node', 'sys-util.js'),
   path.join(DIST, 'sys', 'node', 'sys-worker.js'),
   path.join(DIST, 'sys', 'node', 'websocket.js'),
   path.join(DIST, 'mock-doc', 'index.js'),
@@ -26,18 +25,25 @@ const DIST = path.join(__dirname, '..', 'dist');
 ].forEach(minify);
 
 
-const DIST_LICENSES = path.join(DIST, 'sys', 'node', 'LICENSES');
+const DIST_LICENSES = path.join(DIST, 'licenses');
 fs.emptyDirSync(DIST_LICENSES);
 
 [
   'ansi-colors',
   'autoprefixer',
   'clean-css',
+  'css-what',
   'glob',
   'is-glob',
   'minimatch',
   'opn',
+  'parse5',
+  'pixelmatch',
+  'pngjs',
   'postcss',
+  'rollup',
+  'rollup-plugin-commonjs',
+  'rollup-plugin-node-resolve',
   'semver',
   'terser',
   'ws',
@@ -53,11 +59,26 @@ function copyLicense(moduleId) {
     licenseSrcPath = licensePath;
 
   } catch (e) {
-    const licensePath = path.join(__dirname, '..', 'node_modules', moduleId, 'LICENSE.md');
-    fs.accessSync(licensePath);
-    licenseSrcPath = licensePath;
+
+    try {
+      const licensePath = path.join(__dirname, '..', 'node_modules', moduleId, 'LICENSE.md');
+      fs.accessSync(licensePath);
+      licenseSrcPath = licensePath;
+    } catch (e) {}
   }
 
-  const licenseDistPath = path.join(DIST_LICENSES, moduleId + '.md');
-  fs.copyFileSync(licenseSrcPath, licenseDistPath);
+  if (licenseSrcPath != null) {
+    const licenseDistPath = path.join(DIST_LICENSES, moduleId + '.md');
+    fs.copyFileSync(licenseSrcPath, licenseDistPath);
+
+  } else {
+    const licenseDistPath = path.join(DIST_LICENSES, moduleId + '.md');
+    const pkgJsonFile = path.join(__dirname, '..', 'node_modules', moduleId, 'package.json');
+    const pkgJson = fs.readJsonSync(pkgJsonFile);
+
+    const content = `License: ${pkgJson.license}\n${pkgJson.homepage}`;
+
+    fs.writeFileSync(licenseDistPath, content);
+  }
+
 }

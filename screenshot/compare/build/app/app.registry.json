@@ -2,81 +2,62 @@
   "namespace": "App",
   "fsNamespace": "app",
   "loader": "../app.js",
-  "global": "app.global.js",
-  "core": "app.jyhfn7vh.js",
-  "corePolyfilled": "app.5v1at3af.js",
+  "core": "app.wvpgqenw.js",
+  "corePolyfilled": "app.zfouy8ne.js",
   "components": {
     "app-root": {
       "bundleIds": {
-        "$": "hi8fqvrp"
+        "$": "pjucjxvs"
       }
     },
-    "ion-animation-controller": {
+    "compare-analysis": {
       "bundleIds": {
-        "$": "hi8fqvrp"
-      }
-    },
-    "ion-app": {
-      "bundleIds": {
-        "$": "hi8fqvrp"
-      }
-    },
-    "ion-content": {
-      "bundleIds": {
-        "ios": "n64ptboo",
-        "md": "5ijyu34l"
+        "$": "vqqrg3hr"
       },
       "encapsulation": "shadow"
     },
-    "ion-header": {
+    "compare-filter": {
       "bundleIds": {
-        "ios": "n64ptboo",
-        "md": "5ijyu34l"
-      }
-    },
-    "ion-nav": {
-      "bundleIds": {
-        "$": "hi8fqvrp"
+        "$": "vqqrg3hr"
       },
       "encapsulation": "shadow"
     },
-    "ion-route": {
+    "compare-header": {
       "bundleIds": {
-        "$": "hi8fqvrp"
-      }
-    },
-    "ion-router": {
-      "bundleIds": {
-        "$": "hi8fqvrp"
-      }
-    },
-    "ion-title": {
-      "bundleIds": {
-        "ios": "n64ptboo",
-        "md": "5ijyu34l"
+        "$": "vqqrg3hr"
       },
       "encapsulation": "shadow"
     },
-    "ion-toolbar": {
+    "compare-row": {
       "bundleIds": {
-        "ios": "n64ptboo",
-        "md": "5ijyu34l"
+        "$": "vqqrg3hr"
+      }
+    },
+    "compare-thead": {
+      "bundleIds": {
+        "$": "vqqrg3hr"
       },
       "encapsulation": "shadow"
     },
-    "local-compare": {
+    "screenshot-compare": {
       "bundleIds": {
-        "$": "fgysnpd7"
-      }
-    },
-    "local-pixelmatch": {
-      "bundleIds": {
-        "$": "fgysnpd7"
+        "$": "vqqrg3hr"
       }
     },
     "screenshot-lookup": {
       "bundleIds": {
-        "$": "7atdmzgw"
+        "$": "n3jqfyua"
+      },
+      "encapsulation": "shadow"
+    },
+    "stencil-route": {
+      "bundleIds": {
+        "$": "pjucjxvs"
+      }
+    },
+    "stencil-router": {
+      "bundleIds": {
+        "$": "pjucjxvs"
       }
     }
   }

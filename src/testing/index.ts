@@ -1,5 +1,6 @@
 
 export { createJestPuppeteerEnvironment } from './jest/jest-environment';
+export { createTestRunner } from './jest/jest-runner';
 export { E2EElement, E2EPage } from './puppeteer/puppeteer-declarations';
 export { h } from '../renderer/vdom/h';
 export { jestPreprocessor } from './jest/jest-preprocessor';

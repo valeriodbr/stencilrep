@@ -14,15 +14,15 @@ export function validateTesting(config: d.Config) {
     testing.browserHeadless = true;
   }
 
-  if (config.flags.ci) {
-    testing.browserArgs = testing.browserArgs || [];
-    if (!testing.browserArgs.includes('--no-sandbox')) {
-      testing.browserArgs.push('--no-sandbox');
-    }
-    if (!testing.browserArgs.includes('--disable-setuid-sandbox')) {
-      testing.browserArgs.push('--disable-setuid-sandbox');
-    }
+  testing.browserArgs = testing.browserArgs || [];
+  addOption(testing.browserArgs, '--disable-gpu');
+  addOption(testing.browserArgs, '--disable-canvas-aa');
+  addOption(testing.browserArgs, '--disable-composited-antialiasing');
+  addOption(testing.browserArgs, '--disable-composited-antialiasing');
 
+  if (config.flags.ci) {
+    addOption(testing.browserArgs, '--no-sandbox');
+    addOption(testing.browserArgs, '--disable-setuid-sandbox');
     testing.browserHeadless = true;
   }
 
@@ -48,7 +48,7 @@ export function validateTesting(config: d.Config) {
 
   } else {
     testing.screenshotConnector = config.sys.path.join(
-      config.sys.compiler.packageDir, 'screenshot', 'screenshot-connector.js'
+      config.sys.compiler.packageDir, 'screenshot', 'local-connector.js'
     );
   }
 
@@ -123,16 +123,30 @@ export function validateTesting(config: d.Config) {
     delete testing.testMatch;
 
   } else {
-    const types: string[] = [];
-    if (config.flags.e2e) {
-      types.push('e2e');
-    }
-    if (config.flags.spec) {
-      types.push('spec');
-    }
-
     testing.testMatch = [
-      `**/*(*.)+(${types.join('|')}).+(ts)?(x)`
+      `**/*(*.)+(e2e|spec).+(ts)?(x)`
+    ];
+  }
+
+  if (typeof testing.runner !== 'string') {
+    testing.runner = path.join(
+      config.sys.compiler.packageDir, 'testing', 'jest.runner.js'
+    );
+  }
+
+  if (!Array.isArray(testing.emulate) || testing.emulate.length === 0) {
+    testing.emulate = [
+      {
+        userAgent: 'default',
+        viewport: {
+          width: 600,
+          height: 600,
+          deviceScaleFactor: 1,
+          isMobile: false,
+          hasTouch: false,
+          isLandscape: false,
+        }
+      }
     ];
   }
 
@@ -166,6 +180,12 @@ const DEFAULT_IGNORE_PATTERNS = [
   '.stencil',
   'node_modules',
 ];
+
+function addOption(setArray: string[], option: string) {
+  if (!setArray.includes(option)) {
+    setArray.push(option);
+  }
+}
 
 
 const DEFAULT_ALLOWABLE_MISMATCHED_PIXELS = 100;

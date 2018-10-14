@@ -42,6 +42,29 @@ describe('method decorator', () => {
         jsdoc: {
           documentation: 'Create method for something',
           name: 'create',
+          tags: [{
+            name: 'param',
+            text: 'opts action sheet options'
+          }, {
+            name: 'returns',
+            text: 'action sheet'
+          }
+          ],
+          parameters: [
+            {
+              documentation: 'action sheet options',
+              name: 'opts',
+              tags: [{
+                name: 'param',
+                text: 'opts action sheet options'
+              }],
+              type: 'any'
+            }
+          ],
+          returns: {
+            documentation: 'action sheet',
+            type: 'any'
+          },
           type: '(opts?: any) => any',
         }
       }
@@ -73,6 +96,25 @@ describe('method decorator', () => {
         jsdoc: {
           documentation: 'Create method for something',
           name: 'create',
+          tags: [{
+            name: 'param',
+            text: 'opts action sheet options'
+          }],
+          parameters: [
+            {
+              documentation: 'action sheet options',
+              name: 'opts',
+              tags: [{
+                name: 'param',
+                text: 'opts action sheet options'
+              }],
+              type: 'ActionSheetOptions'
+            }
+          ],
+          returns: {
+            documentation: '',
+            type: 'any'
+          },
           type: '(opts?: ActionSheetOptions) => any',
         }
       }
@@ -101,6 +143,25 @@ describe('method decorator', () => {
         jsdoc: {
           documentation: 'Create method for something',
           name: 'create',
+          tags: [{
+            name: 'param',
+            text: 'opts action sheet options'
+          }],
+          parameters: [
+            {
+              documentation: 'action sheet options',
+              name: 'opts',
+              tags: [{
+                name: 'param',
+                text: 'opts action sheet options'
+              }],
+              type: 'CoreContext'
+            }
+          ],
+          returns: {
+            documentation: '',
+            type: 'any'
+          },
           type: '(opts?: CoreContext) => any'
         }
       }

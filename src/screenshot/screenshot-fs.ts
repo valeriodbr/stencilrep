@@ -10,7 +10,7 @@ export async function writeScreenshotImage(imagePath: string, screenshotBuf: Buf
   }
 }
 
-export async function writeScreenshotData(dataDir: string, screenshotData: d.ScreenshotData) {
+export async function writeScreenshotData(dataDir: string, screenshotData: d.Screenshot) {
   const filePath = getDataFilePath(dataDir, screenshotData.id);
   const content = JSON.stringify(screenshotData, null, 2);
   await writeFile(filePath, content);
@@ -18,7 +18,7 @@ export async function writeScreenshotData(dataDir: string, screenshotData: d.Scr
 
 
 export async function readScreenshotData(dataDir: string, screenshotId: string) {
-  let rtn: d.ScreenshotData = null;
+  let rtn: d.Screenshot = null;
 
   try {
     const dataFilePath = getDataFilePath(dataDir, screenshotId);
@@ -81,6 +81,14 @@ export function writeFile(filePath: string, data: any) {
 export function mkDir(filePath: string) {
   return new Promise<void>(resolve => {
     fs.mkdir(filePath, () => {
+      resolve();
+    });
+  });
+}
+
+export function rmDir(filePath: string) {
+  return new Promise<void>(resolve => {
+    fs.rmdir(filePath, () => {
       resolve();
     });
   });

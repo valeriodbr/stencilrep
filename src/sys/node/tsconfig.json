@@ -35,6 +35,10 @@
     "./node-sys-worker.ts"
   ],
   "include": [
-    "./types/*.d.ts"
+    "./types/*.d.ts",
+    "./node-sys-worker.ts",
+    "../../../types/rollup-plugin-commonjs.d.ts",
+    "../../../types/rollup-plugin-node-globals.d.ts",
+    "../../../types/rollup-plugin-node-resolve.d.ts"
   ]
 }

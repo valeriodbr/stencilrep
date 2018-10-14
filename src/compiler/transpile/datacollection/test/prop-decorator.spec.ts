@@ -32,6 +32,7 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: 'Create method for something',
           name: 'objectAnyThing',
+          tags: [],
           type: '(_: any) => any',
         },
         memberType: MEMBER_TYPE.Prop,
@@ -48,6 +49,7 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: '',
           name: 'size',
+          tags: [],
           type: 'string',
         },
         memberType: MEMBER_TYPE.Prop,
@@ -63,6 +65,7 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: '',
           name: 'withOptions',
+          tags: [],
           type: 'number',
         },
         memberType: MEMBER_TYPE.Prop,
@@ -79,6 +82,7 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: '',
           name: 'width',
+          tags: [],
           type: 'number',
         },
         memberType: MEMBER_TYPE.Prop,
@@ -95,6 +99,7 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: '',
           name: 'setting',
+          tags: [],
           type: `"auto" | "manual"`,
         },
         memberType: MEMBER_TYPE.Prop,
@@ -111,6 +116,7 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: '',
           name: 'values',
+          tags: [],
           type: `number | {}`,
         },
         memberType: MEMBER_TYPE.Prop,
@@ -127,12 +133,34 @@ describe('props decorator', () => {
         jsdoc: {
           documentation: '',
           name: 'enabled',
-          type: `string | boolean`,
+          tags: [],
+          type: `boolean | string`,
         },
         memberType: MEMBER_TYPE.Prop,
         propType: PROP_TYPE.Any,
         reflectToAttrib: false
       },
+      color: {
+        attribName: 'color',
+        attribType: {
+          text: `Color`,
+          optional: true,
+          typeReferences: {
+            Color: {
+              referenceLocation: 'global'
+            }
+          }
+        },
+        jsdoc: {
+          documentation: '',
+          name: 'color',
+          tags: [],
+          type: `"primary" | "secondary"`,
+        },
+        memberType: MEMBER_TYPE.Prop,
+        propType: PROP_TYPE.String,
+        reflectToAttrib: false
+      }
     });
   });
 
