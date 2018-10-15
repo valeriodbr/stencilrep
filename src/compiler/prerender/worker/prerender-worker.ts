@@ -34,7 +34,7 @@ export async function prerenderWorker(input: d.PrerenderInput) {
     }
 
     if (doc && !hasError(results.diagnostics)) {
-      finalizeDocumentAfterPrerender(doc);
+      finalizeDocumentAfterPrerender(input, doc);
 
       // now that we've prerendered the content
       // let's optimize the document node even further
@@ -56,9 +56,18 @@ export async function prerenderWorker(input: d.PrerenderInput) {
 }
 
 
-function finalizeDocumentAfterPrerender(doc: HTMLDocument) {
+function finalizeDocumentAfterPrerender(input: d.PrerenderInput, doc: HTMLDocument) {
   const prerenderPrepareScriptElm = doc.getElementById('prerender-prepare-script');
   if (prerenderPrepareScriptElm) {
     prerenderPrepareScriptElm.remove();
+  }
+
+  const loaderScript = doc.getElementById('stencil-loader-script');
+  if (loaderScript) {
+    loaderScript.removeAttribute('id');
+
+    if (!input.includeLoaderScript) {
+      loaderScript.remove();
+    }
   }
 }

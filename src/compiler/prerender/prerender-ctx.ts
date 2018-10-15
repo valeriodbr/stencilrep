@@ -106,7 +106,8 @@ export class PrerenderCtx {
         prettyHtml: this.outputTarget.prettyHtml,
         pathQuery: this.outputTarget.prerenderPathQuery,
         pathHash: this.outputTarget.prerenderPathHash,
-        allowDomains: this.outputTarget.prerenderAllowDomains
+        allowDomains: this.outputTarget.prerenderAllowDomains,
+        includeLoaderScript: this.outputTarget.prerenderClientHydrate
       };
 
       try {

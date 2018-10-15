@@ -21,6 +21,7 @@ export async function inlinePrerenderClient(
     const loaderScriptElm = findExternalLoaderScript(config.srcIndexHtml, buildCtx.diagnostics, doc, loaderFileName);
 
     if (loaderScriptElm) {
+      loaderScriptElm.setAttribute('id', 'stencil-loader-script');
       await preparePrerenderClient(buildCtx, doc);
       await prepareLoaderScriptElm(config, buildCtx, outputTarget, doc, loaderScriptElm);
     }

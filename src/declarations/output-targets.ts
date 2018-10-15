@@ -70,6 +70,16 @@ export interface OutputTargetWww extends OutputTargetBase {
   inlineAssetsMaxSize?: number;
 
   /**
+   * A prerendered page is already static HTML and CSS, and JavaScript is not
+   * required to hydrate the components. By default the client-side script
+   * will also kick in and turn the static HTML into a JavaScript enabled
+   * webapp. To avoid client-side hydration and leave the prerendered HTML and CSS
+   * to stay static without any JavaScript, set this value to `false`.
+   * Default: `true`
+   */
+  prerenderClientHydrate?: boolean;
+
+  /**
    * If prerendering should continue to crawl local links and prerender.
    * Default: `true`
    */

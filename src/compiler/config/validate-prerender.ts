@@ -35,6 +35,7 @@ export function validatePrerender(config: d.Config, outputTarget: d.OutputTarget
   setBooleanConfig(outputTarget, 'hydrateComponents', null, defaults.hydrateComponents);
   setBooleanConfig(outputTarget, 'inlineStyles', null, defaults.inlineStyles);
   setNumberConfig(outputTarget, 'inlineAssetsMaxSize', null, defaults.inlineAssetsMaxSize);
+  setBooleanConfig(outputTarget, 'prerenderClientHydrate', null, defaults.prerenderClientHydrate);
   setBooleanConfig(outputTarget, 'prerenderUrlCrawl', null, defaults.prerenderUrlCrawl);
   setArrayConfig(outputTarget, 'prerenderLocations', defaults.prerenderLocations);
   setBooleanConfig(outputTarget, 'prerenderPathHash', null, defaults.prerenderPathHash);
@@ -78,6 +79,7 @@ const FULL_PRERENDER_DEFAULTS: d.OutputTargetWww = {
   hydrateComponents: true,
   inlineStyles: true,
   inlineAssetsMaxSize: 5000,
+  prerenderClientHydrate: true,
   prerenderUrlCrawl: true,
   prerenderPathHash: false,
   prerenderPathQuery: false,
@@ -94,6 +96,7 @@ const SSR_DEFAULTS: d.OutputTargetWww = {
   hydrateComponents: true,
   inlineStyles: true,
   inlineAssetsMaxSize: 0,
+  prerenderClientHydrate: true,
   prerenderUrlCrawl: false,
   prerenderPathHash: false,
   prerenderPathQuery: false,
