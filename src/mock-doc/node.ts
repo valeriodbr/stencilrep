@@ -324,8 +324,9 @@ export class MockElement extends MockNode {
     name = name.toLowerCase();
     if (name === 'style') {
       this._style = null;
+    } else {
+      this.removeAttributeNS(null, name);
     }
-    this.removeAttributeNS(null, name);
   }
 
   removeAttributeNS(namespaceURI: string, name: string) {
@@ -343,8 +344,9 @@ export class MockElement extends MockNode {
     name = name.toLowerCase();
     if (name === 'style') {
       this.style = value;
+    } else {
+      this.setAttributeNS(null, name, value);
     }
-    this.setAttributeNS(null, name, value);
   }
 
   setAttributeNS(namespaceURI: string, name: string, value: any) {
