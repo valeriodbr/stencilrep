@@ -134,9 +134,12 @@ function serializeToHtml(node: MockNode, opts: SerializeElementOptions, output: 
         }
       }
 
-      const cssText = (node as MockElement).style.cssText;
-      if (cssText) {
-        output.text.push(' style="' + cssText + '">');
+      if ((node as MockElement).hasAttribute('style')) {
+        output.text.push(` style="${
+          opts.minifyInlineStyles ? ((node as MockElement).style.cssTextMinified || (node as MockElement).style.cssText) :
+          ((node as MockElement).style.cssText)
+        }">`);
+
       } else {
         output.text.push('>');
       }
@@ -264,6 +267,7 @@ export interface SerializeElementOptions {
   excludeTagContent?: string[];
   excludeTags?: string[];
   indentSpaces?: number;
+  minifyInlineStyles?: boolean;
   newLines?: boolean;
   outerHTML?: boolean;
   pretty?: boolean;
