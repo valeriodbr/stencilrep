@@ -9,6 +9,7 @@ export async function writePrerenderResults(input: d.PrerenderInput, pageAnalysi
     const html = serializeNodeToHtml(doc as any, {
       pretty: input.prettyHtml,
       collapseBooleanAttributes: !input.prettyHtml,
+      minifyInlineStyles: !input.prettyHtml,
       removeAttributeQuotes: !input.prettyHtml,
       removeEmptyAttributes: !input.prettyHtml
     });
