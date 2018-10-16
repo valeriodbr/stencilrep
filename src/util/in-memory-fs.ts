@@ -84,6 +84,15 @@ export class InMemoryFileSystem implements d.InMemoryFileSystem {
     item.queueDeleteFromDisk = false;
   }
 
+  async ensureDir(dirPath: string) {
+    const item = this.getItem(dirPath);
+
+    item.isFile = false;
+    item.isDirectory = true;
+    item.queueWriteToDisk = true;
+    item.queueDeleteFromDisk = false;
+  }
+
   async readdir(dirPath: string, opts: d.FsReaddirOptions = {}) {
     dirPath = normalizePath(dirPath);
 

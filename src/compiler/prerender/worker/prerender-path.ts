@@ -174,7 +174,7 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
   pageAnalysis.pathname = pageData.pathname;
   pageAnalysis.search = pageData.search;
   pageAnalysis.hash = pageData.hash;
-  pageAnalysis.anchorPaths = pageData.anchorPaths;
+  pageAnalysis.anchorPaths = pageData.anchorPaths.sort();
 
   if (pageAnalysis.metrics) {
     pageAnalysis.metrics.appLoadDuration = pageData.stencilAppLoadDuration;

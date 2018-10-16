@@ -1,5 +1,6 @@
 import * as d from '../../../declarations';
 import { catchError, hasError } from '../../util';
+import { HYDRATE_SCRIPT_ID, LOADER_SCRIPT_ID, SETUP_SCRIPT_ID } from '../inline-prerender-client';
 import { optimizePrerenderedDocument } from './optimize-document';
 import { prerenderPath } from './prerender-path';
 import { writePageAnalysis, writePrerenderResults } from './prerender-write';
@@ -34,11 +35,11 @@ export async function prerenderWorker(input: d.PrerenderInput) {
     }
 
     if (doc && !hasError(results.diagnostics)) {
-      finalizeDocumentAfterPrerender(input, doc);
+      finalizeDocumentAfterPrerender(doc);
 
       // now that we've prerendered the content
       // let's optimize the document node even further
-      await optimizePrerenderedDocument(doc);
+      await optimizePrerenderedDocument(pageAnalysis, doc);
 
       // no errors, write out the results and modify the html as needed
       await writePrerenderResults(input, pageAnalysis, doc);
@@ -48,6 +49,8 @@ export async function prerenderWorker(input: d.PrerenderInput) {
       await writePageAnalysis(input, pageAnalysis);
     }
 
+    results.anchorPaths = pageAnalysis.anchorPaths.slice();
+
   } catch (e) {
     catchError(results.diagnostics, e);
   }
@@ -56,18 +59,27 @@ export async function prerenderWorker(input: d.PrerenderInput) {
 }
 
 
-function finalizeDocumentAfterPrerender(input: d.PrerenderInput, doc: HTMLDocument) {
-  const prerenderPrepareScriptElm = doc.getElementById('prerender-prepare-script');
-  if (prerenderPrepareScriptElm) {
-    prerenderPrepareScriptElm.remove();
+function finalizeDocumentAfterPrerender(doc: HTMLDocument) {
+  const setupScriptElm = doc.getElementById(SETUP_SCRIPT_ID);
+  if (setupScriptElm) {
+    // remove the prerender setup script that had prender config data
+    setupScriptElm.remove();
   }
 
-  const loaderScript = doc.getElementById('stencil-loader-script');
-  if (loaderScript) {
-    loaderScript.removeAttribute('id');
+  const hydrateScriptElm = doc.getElementById(HYDRATE_SCRIPT_ID);
+  if (hydrateScriptElm) {
+    // remove the prerender script the browser used to hydrate
+    // and prerender the webpage with
+    hydrateScriptElm.remove();
+  }
 
-    if (!input.includeLoaderScript) {
-      loaderScript.remove();
-    }
+  const loaderScriptElm = doc.getElementById(LOADER_SCRIPT_ID);
+  if (loaderScriptElm) {
+    // don't really need to leave this id on the script element
+    loaderScriptElm.removeAttribute('id');
+
+    // we added type="disable-script" just so the script didn't run during
+    // prerender, so let's remove it so the script runs on the client
+    loaderScriptElm.removeAttribute('type');
   }
 }

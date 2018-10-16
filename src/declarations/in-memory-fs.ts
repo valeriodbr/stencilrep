@@ -16,6 +16,7 @@ export interface InMemoryFileSystem {
    */
   accessSync(filePath: string): boolean;
   emptyDir(dirPath: string): Promise<void>;
+  ensureDir(dirPath: string): Promise<void>;
   readdir(dirPath: string, opts?: d.FsReaddirOptions): Promise<d.FsReaddirItem[]>;
   readFile(filePath: string, opts?: d.FsReadOptions): Promise<string>;
   /**

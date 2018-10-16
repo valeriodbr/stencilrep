@@ -21,26 +21,15 @@ export async function inlinePrerenderClient(
     const loaderScriptElm = findExternalLoaderScript(config.srcIndexHtml, buildCtx.diagnostics, doc, loaderFileName);
 
     if (loaderScriptElm) {
-      loaderScriptElm.setAttribute('id', 'stencil-loader-script');
-      await preparePrerenderClient(buildCtx, doc);
       await prepareLoaderScriptElm(config, buildCtx, outputTarget, doc, loaderScriptElm);
     }
+
+    prerenderSetup(buildCtx, doc);
+    prerenderHydrateScript(config, buildCtx, outputTarget, doc);
 
   } catch (e) {
     catchError(buildCtx.diagnostics, e);
   }
-}
-
-
-async function preparePrerenderClient(buildCtx: d.BuildCtx, doc: Document) {
-  const prerenderScriptElm = doc.createElement('script');
-  prerenderScriptElm.setAttribute('id', 'prerender-prepare-script');
-  prerenderScriptElm.innerHTML = `
-    /* prerender prepare: ${buildCtx.timestamp} */
-    window.stencilApp = true;
-    navigator.userAgent = 'prerender';
-  `;
-  doc.body.appendChild(prerenderScriptElm);
 }
 
 
@@ -51,26 +40,72 @@ async function prepareLoaderScriptElm(config: d.Config, buildCtx: d.BuildCtx, ou
     throw new Error(`unable to find app loader build: ${loaderBuildId}`);
   }
 
-  // remove the external src
-  loaderScriptElm.removeAttribute('src');
+  if (outputTarget.prerenderClientHydrate) {
+    // this page will be prerendered, and we want
+    // to client-side hydrate the components
 
-  // only add the data-resources-url attr if we don't already have one
-  const existingResourcesUrlAttr = loaderScriptElm.getAttribute('data-resources-url');
-  if (!existingResourcesUrlAttr) {
-    const resourcesUrl = setDataResourcesUrlAttr(config, outputTarget);
+    // give the loader script an id so it's easy to find later
+    loaderScriptElm.setAttribute('id', LOADER_SCRIPT_ID);
 
-    // add the resource path data attribute
-    loaderScriptElm.setAttribute('data-resources-url', resourcesUrl);
+    // disable the script from executing during prerender
+    loaderScriptElm.setAttribute('type', 'disable-script');
+
+    // remove the external src
+    loaderScriptElm.removeAttribute('src');
+
+    // only add the data-resources-url attr if we don't already have one
+    const existingResourcesUrlAttr = loaderScriptElm.getAttribute('data-resources-url');
+    if (!existingResourcesUrlAttr) {
+      const resourcesUrl = setDataResourcesUrlAttr(config, outputTarget);
+
+      // add the resource path data attribute
+      loaderScriptElm.setAttribute('data-resources-url', resourcesUrl);
+    }
+
+    // inline the js content
+    loaderScriptElm.innerHTML = appLoaderBuild.content;
+
+    // remove the script element from where it's currently at in the dom
+    loaderScriptElm.remove();
+
+    // place it back in the dom, but at the bottom of the body
+    doc.body.appendChild(loaderScriptElm);
+
+  } else {
+    // this page will be prerendered, but we do not
+    // want to client-side hydrate the components
+
+    // remove the script element and do not put it back in the dom
+    loaderScriptElm.remove();
   }
+}
 
-  // inline the js content
-  loaderScriptElm.innerHTML = appLoaderBuild.content;
 
-  // remove the script element from where it's currently at in the dom
-  loaderScriptElm.parentNode.removeChild(loaderScriptElm);
+function prerenderSetup(buildCtx: d.BuildCtx, doc: Document) {
+  // add an inline script with some setup data that's used during prerender
+  const setupScriptElm = doc.createElement('script');
+  setupScriptElm.setAttribute('id', SETUP_SCRIPT_ID);
+  setupScriptElm.innerHTML = `
+    /* prerender setup: ${buildCtx.timestamp} */
+    window.stencilApp = true;
+    navigator.userAgent = 'prerender';
+  `;
+  doc.head.appendChild(setupScriptElm);
+}
 
-  // place it back in the dom, but at the bottom of the body
-  doc.body.appendChild(loaderScriptElm);
+
+function prerenderHydrateScript(config: d.Config, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, doc: Document) {
+  // add the prerender script that used to hydrate the components for prerendered output
+  const resourcesUrl = setDataResourcesUrlAttr(config, outputTarget);
+  const prerenderScriptUrl = resourcesUrl + buildCtx.corePrerenderFileName;
+
+  const hydrateScriptElm = doc.createElement('script');
+  hydrateScriptElm.setAttribute('id', HYDRATE_SCRIPT_ID);
+  hydrateScriptElm.setAttribute('src', prerenderScriptUrl);
+  hydrateScriptElm.setAttribute('type', 'module');
+  hydrateScriptElm.setAttribute('data-namespace', config.fsNamespace);
+  hydrateScriptElm.setAttribute('data-resources-url', resourcesUrl);
+  doc.head.appendChild(hydrateScriptElm);
 }
 
 
@@ -141,3 +176,8 @@ export function setDataResourcesUrlAttr(config: d.Config, outputTarget: d.Output
 
   return resourcesUrl;
 }
+
+
+export const SETUP_SCRIPT_ID = 'prerender-setup-script';
+export const HYDRATE_SCRIPT_ID = 'prerender-hydrate-script';
+export const LOADER_SCRIPT_ID = 'prerender-loader-script';

@@ -58,7 +58,6 @@ async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
   }
 
   try {
-    // const indexHtml = await prepareIndexHtml();
     await prerenderCtx.prerenderAll(pathsQueue);
 
     // prerendering has finished

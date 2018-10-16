@@ -19,7 +19,7 @@ export interface BuildCtx {
   collections: d.Collection[];
   components: string[];
   coreFileName?: string;
-  coreSsrFileName?: string;
+  corePrerenderFileName?: string;
   createTimeSpan(msg: string, debug?: boolean): d.LoggerTimeSpan;
   data: any;
   debug: (msg: string) => void;

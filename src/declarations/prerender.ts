@@ -12,7 +12,6 @@ export interface PrerenderInput {
   pathQuery: boolean;
   pathHash: boolean;
   allowDomains: string[];
-  includeLoaderScript: boolean;
 }
 
 

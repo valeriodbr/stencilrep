@@ -1,5 +1,5 @@
 import * as d from '../../declarations';
-import { catchError, hasError } from '../util';
+import { catchError, hasError, normalizePath } from '../util';
 import { getWritePathFromUrl, queuePathForPrerender } from './prerender-utils';
 import { prepareIndexHtmlBeforePrerender } from './prepare-index-html';
 import * as puppeteer from 'puppeteer'; // for types only
@@ -106,9 +106,14 @@ export class PrerenderCtx {
         prettyHtml: this.outputTarget.prettyHtml,
         pathQuery: this.outputTarget.prerenderPathQuery,
         pathHash: this.outputTarget.prerenderPathHash,
-        allowDomains: this.outputTarget.prerenderAllowDomains,
-        includeLoaderScript: this.outputTarget.prerenderClientHydrate
+        allowDomains: this.outputTarget.prerenderAllowDomains
       };
+
+      // before we kick everything off, let's make sure
+      // we've got all the required directories created first
+      const dirPath = normalizePath(this.config.sys.path.dirname(input.filePath));
+      await this.compilerCtx.fs.ensureDir(dirPath);
+      await this.compilerCtx.fs.commit();
 
       try {
         // throw this over the wall to another process
