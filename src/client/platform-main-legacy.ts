@@ -14,10 +14,9 @@ import { initStyleTemplate } from '../core/styles';
 import { parseComponentLoader } from '../util/data-parse';
 import { proxyController } from '../core/proxy-controller';
 import { queueUpdate } from '../core/update';
-import { runtimeHelpers } from './runtime-helpers';
 
 
-export function createPlatformMainLegacy(namespace: string, Context: d.CoreContext, win: d.WindowData, doc: Document, resourcesUrl: string, hydratedCssClass: string, customStyle: CustomStyle) {
+export function createPlatformMainLegacy(namespace: string, Context: d.CoreContext, win: d.WindowData, doc: Document, resourcesUrl: string, hydratedCssClass: string, components: d.ComponentHostData[], customStyle: CustomStyle) {
   const cmpRegistry: d.ComponentRegistry = { 'html': {} };
   const bundleQueue: d.BundleCallback[] = [];
   const loadedBundles = new Map<string, d.CjsExports>();
@@ -369,32 +368,35 @@ export function createPlatformMainLegacy(namespace: string, Context: d.CoreConte
   }
 
   if (__BUILD_CONDITIONALS__.devInspector) {
-    generateDevInspector(App, namespace, win, plt);
-  }
-
-  if (__BUILD_CONDITIONALS__.isDev) {
-    runtimeHelpers(win);
+    generateDevInspector(namespace, win, plt, components);
   }
 
   // register all the components now that everything's ready
-  (App.components || [])
+  components
     .map(data => {
       const cmpMeta = parseComponentLoader(data);
       return cmpRegistry[cmpMeta.tagNameMeta] = cmpMeta;
     })
     .forEach(cmpMeta => {
-    // es5 way of extending HTMLElement
-    function HostElement(self: any) {
-      return HTMLElement.call(this, self);
+      // es5 way of extending HTMLElement
+      function HostElement(self: any) {
+        return HTMLElement.call(this, self);
+      }
+
+      HostElement.prototype = Object.create(
+        HTMLElement.prototype,
+        { constructor: { value: HostElement, configurable: true } }
+      );
+
+      defineComponent(cmpMeta, HostElement);
     }
+  );
 
-    HostElement.prototype = Object.create(
-      HTMLElement.prototype,
-      { constructor: { value: HostElement, configurable: true } }
-    );
-
-    defineComponent(cmpMeta, HostElement);
-  });
+  if (!plt.hasConnectedComponent) {
+    // we just defined call the custom elements but no
+    // connectedCallbacks happened, so no components in the dom :(
+    rootElm['s-init']();
+  }
 
   // create the componentOnReady fn
   initCoreComponentOnReady(plt, App, win, win['s-apps'], win['s-cr']);

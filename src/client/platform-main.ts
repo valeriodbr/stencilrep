@@ -14,10 +14,9 @@ import { initStyleTemplate } from '../core/styles';
 import { parseComponentLoader } from '../util/data-parse';
 import { proxyController } from '../core/proxy-controller';
 import { queueUpdate } from '../core/update';
-import { runtimeHelpers } from './runtime-helpers';
 
 
-export function createPlatformMain(namespace: string, Context: d.CoreContext, win: d.WindowData, doc: Document, resourcesUrl: string, hydratedCssClass: string) {
+export function createPlatformMain(namespace: string, Context: d.CoreContext, win: d.WindowData, doc: Document, resourcesUrl: string, hydratedCssClass: string, components: d.ComponentHostData[]) {
   const cmpRegistry: d.ComponentRegistry = { 'html': {} };
   const controllerComponents: {[tag: string]: d.HostElement} = {};
   const App: d.AppGlobal = (win as any)[namespace] = (win as any)[namespace] || {};
@@ -238,19 +237,21 @@ export function createPlatformMain(namespace: string, Context: d.CoreContext, wi
   }
 
   if (__BUILD_CONDITIONALS__.devInspector) {
-    generateDevInspector(App, namespace, win, plt);
-  }
-
-  if (__BUILD_CONDITIONALS__.isDev) {
-    runtimeHelpers(win);
+    generateDevInspector(namespace, win, plt, components);
   }
 
   if (__BUILD_CONDITIONALS__.browserModuleLoader) {
     // register all the components now that everything's ready
     // standard es2017 class extends HTMLElement
-    (App.components || [])
+    components
       .map(parseComponentLoader)
       .forEach(cmpMeta => defineComponent(cmpMeta, class extends HTMLElement {}));
+
+    if (!plt.hasConnectedComponent) {
+      // we just defined call the custom elements but no
+      // connectedCallbacks happened, so no components in the dom :(
+      rootElm['s-init']();
+    }
   }
 
   // create the componentOnReady fn
