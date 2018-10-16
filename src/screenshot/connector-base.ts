@@ -17,6 +17,7 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
   buildMessage: string;
   buildAuthor: string;
   buildUrl: string;
+  previewUrl: string;
   buildTimestamp: number;
   screenshotDir: string;
   imagesDir: string;
@@ -35,6 +36,7 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
     this.buildMessage = opts.buildMessage || '';
     this.buildAuthor = opts.buildAuthor;
     this.buildUrl = opts.buildUrl;
+    this.previewUrl = opts.previewUrl;
     this.buildTimestamp = typeof opts.buildTimestamp === 'number' ? opts.buildTimestamp : Date.now(),
     this.cacheDir = opts.cacheDir;
     this.packageDir = opts.packageDir;
@@ -118,12 +120,25 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
 
     this.sortScreenshots(screenshots);
 
+    if (!masterBuild) {
+      masterBuild = {
+        id: this.buildId,
+        message: this.buildMessage,
+        author: this.buildAuthor,
+        url: this.buildUrl,
+        timestamp: this.buildTimestamp,
+        screenshots: screenshots
+      };
+    }
+
     const results: d.ScreenshotBuildResults = {
       masterBuild: masterBuild,
       currentBuild: {
         id: this.buildId,
         message: this.buildMessage,
         author: this.buildAuthor,
+        url: this.buildUrl,
+        previewUrl: this.previewUrl,
         timestamp: this.buildTimestamp,
         screenshots: screenshots
       },
@@ -133,13 +148,15 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
           id: masterBuild.id,
           message: masterBuild.message,
           author: masterBuild.author,
-          url: masterBuild.url
+          url: masterBuild.url,
+          previewUrl: masterBuild.previewUrl
         },
         b: {
           id: this.buildId,
           message: this.buildMessage,
           author: this.buildAuthor,
           url: this.buildUrl,
+          previewUrl: this.previewUrl,
         },
         url: null,
         timestamp: this.buildTimestamp,
