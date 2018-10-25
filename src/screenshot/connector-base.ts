@@ -12,6 +12,7 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
   imagesDirName = 'images';
   buildsDirName = 'builds';
   masterBuildFileName = 'master.json';
+  screenshotCacheFileName = 'screenshot-cache.json';
   logger: d.Logger;
   buildId: string;
   buildMessage: string;
@@ -19,15 +20,19 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
   buildUrl: string;
   previewUrl: string;
   buildTimestamp: number;
+  appNamespace: string;
   screenshotDir: string;
   imagesDir: string;
   buildsDir: string;
   masterBuildFilePath: string;
+  screenshotCacheFilePath: string;
   currentBuildDir: string;
   updateMaster: boolean;
   allowableMismatchedRatio: number;
   allowableMismatchedPixels: number;
   pixelmatchThreshold: number;
+  timeoutBeforeScreenshot: number;
+  pixelmatchModulePath: string;
 
   async initBuild(opts: d.ScreenshotConnectorOptions) {
     this.logger = opts.logger;
@@ -41,6 +46,9 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
     this.cacheDir = opts.cacheDir;
     this.packageDir = opts.packageDir;
     this.rootDir = opts.rootDir;
+    this.appNamespace = opts.appNamespace;
+    this.timeoutBeforeScreenshot = typeof opts.timeoutBeforeScreenshot === 'number' ? opts.timeoutBeforeScreenshot : 4;
+    this.pixelmatchModulePath = opts.pixelmatchModulePath;
 
     if (!opts.logger) {
       throw new Error(`logger option required`);
@@ -86,6 +94,7 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
     this.imagesDir = join(this.screenshotDir, this.imagesDirName);
     this.buildsDir = join(this.screenshotDir, this.buildsDirName);
     this.masterBuildFilePath = join(this.buildsDir, this.masterBuildFileName);
+    this.screenshotCacheFilePath = join(this.cacheDir, this.screenshotCacheFileName);
     this.currentBuildDir = join(tmpdir(), 'screenshot-build-' + this.buildId);
 
     this.logger.debug(`screenshotDirPath: ${this.screenshotDir}`);
@@ -126,12 +135,15 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
         message: this.buildMessage,
         author: this.buildAuthor,
         url: this.buildUrl,
+        previewUrl: this.previewUrl,
+        appNamespace: this.appNamespace,
         timestamp: this.buildTimestamp,
         screenshots: screenshots
       };
     }
 
     const results: d.ScreenshotBuildResults = {
+      appNamespace: this.appNamespace,
       masterBuild: masterBuild,
       currentBuild: {
         id: this.buildId,
@@ -139,6 +151,7 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
         author: this.buildAuthor,
         url: this.buildUrl,
         previewUrl: this.previewUrl,
+        appNamespace: this.appNamespace,
         timestamp: this.buildTimestamp,
         screenshots: screenshots
       },
@@ -159,6 +172,7 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
           previewUrl: this.previewUrl,
         },
         url: null,
+        appNamespace: this.appNamespace,
         timestamp: this.buildTimestamp,
         diffs: []
       }
@@ -201,7 +215,62 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
     }
   }
 
-  toJson(masterBuild: d.ScreenshotBuild) {
+  async getScreenshotCache() {
+    return null as d.ScreenshotCache;
+  }
+
+  async updateScreenshotCache(screenshotCache: d.ScreenshotCache, buildResults: d.ScreenshotBuildResults) {
+    screenshotCache = screenshotCache || {};
+    screenshotCache.timestamp = this.buildTimestamp;
+    screenshotCache.lastBuildId = this.buildId;
+    screenshotCache.size = 0;
+    screenshotCache.items = screenshotCache.items || [];
+
+    if (buildResults && buildResults.compare && Array.isArray(buildResults.compare.diffs)) {
+      buildResults.compare.diffs.forEach(diff => {
+        if (typeof diff.cacheKey !== 'string') {
+          return;
+        }
+
+        if (diff.imageA === diff.imageB) {
+          // no need to cache identical matches
+          return;
+        }
+
+        const existingItem = screenshotCache.items.find(i => i.key === diff.cacheKey);
+        if (existingItem) {
+          // already have this cached, but update its timestamp
+          existingItem.ts = this.buildTimestamp;
+
+        } else {
+          // add this item to the cache
+          screenshotCache.items.push({
+            key: diff.cacheKey,
+            ts: this.buildTimestamp,
+            mp: diff.mismatchedPixels
+          });
+        }
+      });
+    }
+
+    // sort so the newest items are on top
+    screenshotCache.items.sort((a, b) => {
+      if (a.ts > b.ts) return -1;
+      if (a.ts < b.ts) return 1;
+      if (a.mp > b.mp) return -1;
+      if (a.mp < b.mp) return 1;
+      return 0;
+    });
+
+    // keep only the most recent items
+    screenshotCache.items = screenshotCache.items.slice(0, 1000);
+
+    screenshotCache.size = screenshotCache.items.length;
+
+    return screenshotCache;
+  }
+
+  toJson(masterBuild: d.ScreenshotBuild, screenshotCache: d.ScreenshotCache) {
     const masterScreenshots: {[screenshotId: string]: string} = {};
     if (masterBuild && Array.isArray(masterBuild.screenshots)) {
       masterBuild.screenshots.forEach(masterScreenshot => {
@@ -209,19 +278,28 @@ export class ScreenshotConnector implements d.ScreenshotConnector {
       });
     }
 
+    const mismatchCache: {[cacheKey: string]: number} = {};
+    if (screenshotCache && Array.isArray(screenshotCache.items)) {
+      screenshotCache.items.forEach(cacheItem => {
+        mismatchCache[cacheItem.key] = cacheItem.mp;
+      });
+    }
+
     const screenshotBuild: d.ScreenshotBuildData = {
       buildId: this.buildId,
       rootDir: this.rootDir,
-      cacheDir: this.cacheDir,
       screenshotDir: this.screenshotDir,
       imagesDir: this.imagesDir,
       buildsDir: this.buildsDir,
       masterScreenshots: masterScreenshots,
+      cache: mismatchCache,
       currentBuildDir: this.currentBuildDir,
       updateMaster: this.updateMaster,
       allowableMismatchedPixels: this.allowableMismatchedPixels,
       allowableMismatchedRatio: this.allowableMismatchedRatio,
-      pixelmatchThreshold: this.pixelmatchThreshold
+      pixelmatchThreshold: this.pixelmatchThreshold,
+      timeoutBeforeScreenshot: this.timeoutBeforeScreenshot,
+      pixelmatchModulePath: this.pixelmatchModulePath
     };
 
     return JSON.stringify(screenshotBuild);

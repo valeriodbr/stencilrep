@@ -20,7 +20,12 @@ export async function taskBuild(process: NodeJS.Process, config: d.Config, flags
   }
 
   if ((config.devServer && flags.serve) || isPrerendering) {
-    devServerStart = compiler.startDevServer();
+    try {
+      devServerStart = compiler.startDevServer();
+    } catch (e) {
+      config.logger.error(e);
+      process.exit(1);
+    }
   }
 
   const latestVersion = getLatestCompilerVersion(config.sys, config.logger);

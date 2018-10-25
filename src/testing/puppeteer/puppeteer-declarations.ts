@@ -107,15 +107,21 @@ export interface E2EPage extends PuppeteerPage {
    * was not called.
    */
   waitForChanges(): Promise<void>;
+
+  /**
+   * Waits for the event to be received on `window`. The optional second argument
+   * allows the listener to be set to `document` if needed.
+   */
+  waitForEvent(eventName: string, selector?: 'window' | 'document'): Promise<CustomEvent>;
 }
 
 
 export interface E2EPageInternal extends E2EPage {
   isClosed(): boolean;
-  _elements: E2EElementInternal[];
-  _events: WaitForEvent[];
-  _eventIds: number;
-  _goto(url: string, options?: Partial<puppeteer.NavigationOptions>): Promise<puppeteer.Response | null>;
+  _e2eElements: E2EElementInternal[];
+  _e2eEvents: WaitForEvent[];
+  _e2eEventIds: number;
+  _e2eGoto(url: string, options?: Partial<puppeteer.NavigationOptions>): Promise<puppeteer.Response | null>;
   screenshot(options?: puppeteer.ScreenshotOptions): Promise<Buffer>;
 }
 

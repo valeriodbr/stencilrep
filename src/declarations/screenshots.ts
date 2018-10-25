@@ -7,13 +7,16 @@ export interface ScreenshotConnector {
   getMasterBuild(): Promise<d.ScreenshotBuild>;
   pullMasterBuild(): Promise<void>;
   publishBuild(buildResults: d.ScreenshotBuildResults): Promise<d.ScreenshotBuildResults>;
+  getScreenshotCache(): Promise<d.ScreenshotCache>;
+  updateScreenshotCache(screenshotCache: d.ScreenshotCache, buildResults: d.ScreenshotBuildResults): Promise<d.ScreenshotCache>;
   generateJsonpDataUris(build: d.ScreenshotBuild): Promise<void>;
   sortScreenshots(screenshots: d.Screenshot[]): d.Screenshot[];
-  toJson(masterBuild: d.ScreenshotBuild): string;
+  toJson(masterBuild: d.ScreenshotBuild, screenshotCache: d.ScreenshotCache): string;
 }
 
 
 export interface ScreenshotBuildResults {
+  appNamespace: string;
   masterBuild: d.ScreenshotBuild;
   currentBuild: d.ScreenshotBuild;
   compare: ScreenshotCompareResults;
@@ -38,6 +41,7 @@ export interface ScreenshotCompareResults {
   };
   timestamp: number;
   url: string;
+  appNamespace: string;
   diffs: d.ScreenshotDiff[];
 }
 
@@ -48,6 +52,7 @@ export interface ScreenshotConnectorOptions {
   buildAuthor?: string;
   buildUrl?: string;
   previewUrl?: string;
+  appNamespace: string;
   buildTimestamp: number;
   logger: d.Logger;
   rootDir: string;
@@ -61,13 +66,14 @@ export interface ScreenshotConnectorOptions {
   allowableMismatchedPixels?: number;
   allowableMismatchedRatio?: number;
   pixelmatchThreshold?: number;
+  timeoutBeforeScreenshot?: number;
+  pixelmatchModulePath?: string;
 }
 
 
 export interface ScreenshotBuildData {
   buildId: string;
   rootDir: string;
-  cacheDir: string;
   screenshotDir: string;
   imagesDir: string;
   buildsDir: string;
@@ -77,6 +83,18 @@ export interface ScreenshotBuildData {
   allowableMismatchedRatio: number;
   pixelmatchThreshold: number;
   masterScreenshots: {[screenshotId: string]: string};
+  cache: {[cacheKey: string]: number};
+  timeoutBeforeScreenshot: number;
+  pixelmatchModulePath: string;
+}
+
+
+export interface PixelMatchInput {
+  imageAPath: string;
+  imageBPath: string;
+  width: number;
+  height: number;
+  pixelmatchThreshold: number;
 }
 
 
@@ -86,8 +104,32 @@ export interface ScreenshotBuild {
   author?: string;
   url?: string;
   previewUrl?: string;
+  appNamespace: string;
   timestamp: number;
   screenshots: Screenshot[];
+}
+
+
+export interface ScreenshotCache {
+  timestamp?: number;
+  lastBuildId?: string;
+  size?: number;
+  items?: {
+    /**
+     * Cache key
+     */
+    key: string;
+
+    /**
+     * Timestamp used to remove the oldest data
+     */
+    ts: number;
+
+    /**
+     * Mismatched pixels
+     */
+    mp: number;
+  }[];
 }
 
 
@@ -125,6 +167,7 @@ export interface ScreenshotDiff {
   allowableMismatchedPixels: number;
   allowableMismatchedRatio: number;
   testPath?: string;
+  cacheKey?: string;
 }
 
 

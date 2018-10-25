@@ -19,6 +19,7 @@ export function createDomApi(App: AppGlobal, win: any, doc: Document): DomApi {
       // CustomEvent polyfill
       win.CustomEvent = (event: any, data: EventEmitterData, evt?: any) => {
         evt = doc.createEvent('CustomEvent');
+        data = data || {};
         evt.initCustomEvent(event, data.bubbles, data.cancelable, data.detail);
         return evt;
       };
@@ -239,8 +240,12 @@ export function createDomApi(App: AppGlobal, win: any, doc: Document): DomApi {
         }
       }
     },
-    $dispatchEvent: (elm, eventName, data) =>
-      elm && elm.dispatchEvent(new win.CustomEvent(eventName, data)),
+    $dispatchEvent: (elm, eventName, data) => {
+      // create and return the custom event, allows for cancel checks
+      const e = new win.CustomEvent(eventName, data);
+      elm && elm.dispatchEvent(e);
+      return e;
+    },
 
     $parentElement: (elm, parentNode?): any =>
       // if the parent node is a document fragment (shadow root)

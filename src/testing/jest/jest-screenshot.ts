@@ -8,11 +8,18 @@ export async function runJestScreenshot(config: d.Config, env: d.E2EProcessEnv) 
   const ScreenshotConnector = require(config.testing.screenshotConnector) as any;
   const connector: d.ScreenshotConnector = new ScreenshotConnector();
 
+  // for CI, let's wait a little longer than locally before taking the screenshot
+  const timeoutBeforeScreenshot = config.flags.ci ? 150 : 10;
+
+  const pixelmatchModulePath = config.sys.path.join(config.sys.compiler.packageDir, 'screenshot', 'pixel-match.js');
+  config.logger.debug(`pixelmatch module: ${pixelmatchModulePath}`);
+
   const initTimespan = config.logger.createTimeSpan(`screenshot, initBuild started`, true);
   await connector.initBuild({
     buildId: createBuildId(),
     buildMessage: createBuildMessage(),
     buildTimestamp: Date.now(),
+    appNamespace: config.namespace,
     rootDir: config.rootDir,
     cacheDir: config.cacheDir,
     packageDir: config.sys.compiler.packageDir,
@@ -20,7 +27,9 @@ export async function runJestScreenshot(config: d.Config, env: d.E2EProcessEnv) 
     logger: config.logger,
     allowableMismatchedPixels: config.testing.allowableMismatchedPixels,
     allowableMismatchedRatio: config.testing.allowableMismatchedRatio,
-    pixelmatchThreshold: config.testing.pixelmatchThreshold
+    pixelmatchThreshold: config.testing.pixelmatchThreshold,
+    timeoutBeforeScreenshot: timeoutBeforeScreenshot,
+    pixelmatchModulePath: pixelmatchModulePath
   });
 
   if (!config.flags.updateScreenshot) {
@@ -29,9 +38,15 @@ export async function runJestScreenshot(config: d.Config, env: d.E2EProcessEnv) 
 
   initTimespan.finish(`screenshot, initBuild finished`);
 
-  const masterBuild = await connector.getMasterBuild();
+  const dataPromises = await Promise.all([
+    await connector.getMasterBuild(),
+    await connector.getScreenshotCache()
+  ]);
 
-  env.__STENCIL_SCREENSHOT_BUILD__ = connector.toJson(masterBuild);
+  const masterBuild = dataPromises[0];
+  const screenshotCache = dataPromises[1];
+
+  env.__STENCIL_SCREENSHOT_BUILD__ = connector.toJson(masterBuild, screenshotCache);
 
   const testsTimespan = config.logger.createTimeSpan(`screenshot, tests started`, true);
 
@@ -48,9 +63,7 @@ export async function runJestScreenshot(config: d.Config, env: d.E2EProcessEnv) 
       const publishTimespan = config.logger.createTimeSpan(`screenshot, publishBuild started`, true);
       results = await connector.publishBuild(results);
       publishTimespan.finish(`screenshot, publishBuild finished`);
-    }
 
-    if (results) {
       if (config.flags.updateScreenshot) {
         // updating the master screenshot
         if (results.currentBuild && typeof results.currentBuild.previewUrl === 'string') {
@@ -60,6 +73,12 @@ export async function runJestScreenshot(config: d.Config, env: d.E2EProcessEnv) 
       } else {
         // comparing the screenshot to master
         if (results.compare) {
+          try {
+            await connector.updateScreenshotCache(screenshotCache, results);
+          } catch (e) {
+            config.logger.error(e);
+          }
+
           config.logger.info(`screenshots compared: ${results.compare.diffs.length}`);
 
           if (typeof results.compare.url === 'string') {

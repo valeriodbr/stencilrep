@@ -2,7 +2,6 @@ import * as d from '.';
 
 
 export interface StencilSystem {
-  autoprefixCss?(input: string, opts?: any): Promise<string>;
   cancelWorkerTasks?(): void;
   compiler?: {
     name: string;
@@ -27,17 +26,13 @@ export interface StencilSystem {
   initWorkers?(maxConcurrentWorkers: number, maxConcurrentTasksPerWorker: number): d.WorkerOptions;
   lazyRequire?: d.LazyRequire;
   loadConfigFile?(configPath: string, process?: any): d.Config;
-  minifyCss?(input: string, filePath?: string, opts?: any): Promise<{
-    output: string;
-    sourceMap?: any;
-    diagnostics?: d.Diagnostic[];
-  }>;
   minifyJs?(input: string, opts?: any): Promise<{
     output: string;
     sourceMap?: any;
     diagnostics?: d.Diagnostic[];
   }>;
   open?: (url: string, opts?: any) => Promise<void>;
+  optimizeCss?(inputOpts: d.OptimizeCssInput): Promise<d.OptimizeCssOutput>;
   path?: Path;
   prerender?(input: d.PrerenderInput): Promise<d.PrerenderResults>;
   requestLatestCompilerVersion?(): Promise<string>;

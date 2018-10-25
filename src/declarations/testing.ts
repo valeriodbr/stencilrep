@@ -184,6 +184,7 @@ export interface E2EProcessEnv {
   __STENCIL_SPEC_TESTS__?: 'true';
 
   __STENCIL_PUPPETEER_MODULE__?: string;
+  __STENCIL_DEFAULT_TIMEOUT__?: string;
 }
 
 
@@ -326,7 +327,7 @@ export interface JestArgv extends JestConfig {
   _: string[];
   ci: boolean;
   config: string;
-  runInBand: boolean;
+  maxWorkers: number;
 }
 
 

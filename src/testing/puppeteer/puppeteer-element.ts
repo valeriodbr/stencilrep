@@ -11,7 +11,7 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
 
   constructor(private _page: pd.E2EPageInternal, private _elmHandle: puppeteer.ElementHandle) {
     super(null, null);
-    _page._elements.push(this);
+    _page._e2eElements.push(this);
   }
 
   find(selector: string) {
@@ -79,7 +79,16 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
             if (elm.isConnected) {
               const style = window.getComputedStyle(elm);
               const isVisible = !!style && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
-              resolve(isVisible);
+
+              if (isVisible) {
+                window.requestAnimationFrame(() => {
+                  elm.clientWidth;
+                  resolve(true);
+                });
+
+              } else {
+                resolve(false);
+              }
 
             } else {
               resolve(false);
@@ -99,10 +108,12 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
     return new Promise<void>((resolve, reject) => {
       let resolveTmr: any;
 
+      const timeout = 30000;
+
       const rejectTmr = setTimeout(() => {
         clearTimeout(resolveTmr);
-        reject(`waitForVisible timed out`);
-      }, 15000);
+        reject(`waitForVisible timed out: ${timeout}ms`);
+      }, timeout);
 
       const checkVisible = async () => {
         const isVisible = await this.isVisible();
@@ -122,10 +133,12 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
     return new Promise<void>((resolve, reject) => {
       let resolveTmr: any;
 
+      const timeout = 30000;
+
       const rejectTmr = setTimeout(() => {
         clearTimeout(resolveTmr);
-        reject(`waitForNotVisible timed out`);
-      }, 15000);
+        reject(`waitForNotVisible timed out: ${timeout}ms`);
+      }, timeout);
 
       const checkVisible = async () => {
         const isVisible = await this.isVisible();
@@ -486,9 +499,9 @@ export class E2EElement extends MockElement implements pd.E2EElementInternal {
       this._elmHandle = null;
     }
 
-    const index = this._page._elements.indexOf(this);
+    const index = this._page._e2eElements.indexOf(this);
     if (index > -1) {
-      this._page._elements.splice(index, 1);
+      this._page._e2eElements.splice(index, 1);
     }
 
     this._page = null;

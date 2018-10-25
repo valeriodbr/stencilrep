@@ -1,69 +1,25 @@
-import { createHash } from 'crypto';
+import * as d from '../declarations';
 import { createReadStream } from 'fs';
-import { readFile, writeFile } from './screenshot-fs';
-import { join } from 'path';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
 
 
-export async function getMismatchedPixels(cacheDir: string, imagesDir: string, masterImageName: string, localImageName: string, width: number, height: number, pixelmatchThreshold: number) {
+function getMismatchedPixels(pixelMatchInput: d.PixelMatchInput) {
+  const imgA = createReadStream(pixelMatchInput.imageAPath).pipe(new PNG()).on('parsed', doneReading);
+  const imgB = createReadStream(pixelMatchInput.imageBPath).pipe(new PNG()).on('parsed', doneReading);
 
-  const cacheKey = getCacheKey(masterImageName, localImageName, width, height, pixelmatchThreshold);
-  const diffJsonPath = join(cacheDir, `mismatch_${cacheKey}.json.log`);
+  let filesRead = 0;
 
-  try {
-    const diffData = JSON.parse(await readFile(diffJsonPath)) as DiffData;
-    if (diffData && typeof diffData.mismatch === 'number') {
-      return diffData.mismatch;
-    }
-  } catch (e) {}
+  function doneReading() {
+    if (++filesRead < 2) return;
 
-  const images = await Promise.all([
-    readImage(imagesDir, masterImageName),
-    readImage(imagesDir, localImageName)
-  ]);
+    const mismatchedPixels = pixelmatch(imgA.data, imgB.data, null, pixelMatchInput.width, pixelMatchInput.height, {
+      threshold: pixelMatchInput.pixelmatchThreshold,
+      includeAA: false
+    });
 
-  const mismatchedPixels = pixelmatch(images[0], images[1], null, width, height, {
-    threshold: pixelmatchThreshold,
-    includeAA: false
-  });
-
-  const diffData: DiffData = {
-    mismatch: mismatchedPixels
-  };
-
-  try {
-    await writeFile(diffJsonPath, JSON.stringify(diffData));
-  } catch (e) {}
-
-  return diffData.mismatch;
+    process.send(mismatchedPixels);
+  }
 }
 
-
-function getCacheKey(masterImageName: string, localImageName: string, width: number, height: number, pixelmatchThreshold: number) {
-  const hash = createHash('md5');
-
-  hash.update(masterImageName);
-  hash.update(localImageName);
-  hash.update(width.toString());
-  hash.update(height.toString());
-  hash.update(pixelmatchThreshold.toString());
-
-  return hash.digest('hex').toLowerCase();
-}
-
-
-function readImage(imagesDir: string, image: string) {
-  return new Promise<Buffer>(resolve => {
-    const filePath = join(imagesDir, image);
-
-    const rs = createReadStream(filePath);
-
-    rs.pipe(new PNG()).on('parsed', resolve);
-  });
-}
-
-
-interface DiffData {
-  mismatch: number;
-}
+process.on('message', getMismatchedPixels);

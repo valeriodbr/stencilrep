@@ -1,15 +1,18 @@
 import * as d from '../declarations';
-import { getMismatchedPixels } from './pixel-match';
 import { normalizePath } from '../compiler/util';
 import { writeScreenshotData, writeScreenshotImage } from './screenshot-fs';
 import { createHash } from 'crypto';
 import { join, relative } from 'path';
+import { fork } from 'child_process';
 
 
-export async function compareScreenshot(emulateConfig: d.EmulateConfig, screenshotBuildData: d.ScreenshotBuildData, screenshotBuf: Buffer, desc: string, testPath: string, pixelmatchThreshold: number) {
-  const hash = createHash('md5').update(screenshotBuf).digest('hex');
-  const localImageName = `${hash}.png`;
-  const imagePath = join(screenshotBuildData.imagesDir, localImageName);
+export async function compareScreenshot(emulateConfig: d.EmulateConfig, screenshotBuildData: d.ScreenshotBuildData, currentScreenshotBuf: Buffer, desc: string, testPath: string, pixelmatchThreshold: number) {
+  const currentImageHash = createHash('md5').update(currentScreenshotBuf).digest('hex');
+  const currentImageName = `${currentImageHash}.png`;
+  const currentImagePath = join(screenshotBuildData.imagesDir, currentImageName);
+
+  await writeScreenshotImage(currentImagePath, currentScreenshotBuf);
+  currentScreenshotBuf = null;
 
   if (testPath) {
     testPath = normalizePath(relative(screenshotBuildData.rootDir, testPath));
@@ -23,7 +26,7 @@ export async function compareScreenshot(emulateConfig: d.EmulateConfig, screensh
 
   const screenshot: d.Screenshot = {
     id: screenshotId,
-    image: localImageName,
+    image: currentImageName,
     device: emulateConfig.device,
     userAgent: emulateConfig.userAgent,
     desc: desc,
@@ -37,8 +40,8 @@ export async function compareScreenshot(emulateConfig: d.EmulateConfig, screensh
     diff: {
       id: screenshotId,
       desc: desc,
-      imageA: localImageName,
-      imageB: localImageName,
+      imageA: currentImageName,
+      imageB: currentImageName,
       mismatchedPixels: 0,
       device: emulateConfig.device,
       userAgent: emulateConfig.userAgent,
@@ -57,13 +60,7 @@ export async function compareScreenshot(emulateConfig: d.EmulateConfig, screensh
   if (screenshotBuildData.updateMaster) {
     // this data is going to become the master data
     // so no need to compare with previous versions
-
-    // write the build data
-    await Promise.all([
-      writeScreenshotData(screenshotBuildData.currentBuildDir, screenshot),
-      writeScreenshotImage(imagePath, screenshotBuf)
-    ]);
-
+    await writeScreenshotData(screenshotBuildData.currentBuildDir, screenshot);
     return screenshot.diff;
   }
 
@@ -71,43 +68,104 @@ export async function compareScreenshot(emulateConfig: d.EmulateConfig, screensh
 
   if (!masterScreenshotImage) {
     // didn't find a master screenshot to compare it to
-
-    // write the build data
-    await Promise.all([
-      writeScreenshotData(screenshotBuildData.currentBuildDir, screenshot),
-      writeScreenshotImage(imagePath, screenshotBuf)
-    ]);
-
+    await writeScreenshotData(screenshotBuildData.currentBuildDir, screenshot);
     return screenshot.diff;
   }
 
-  await writeScreenshotImage(imagePath, screenshotBuf);
-
-  // set that the master data image is the image we're expecting
+  // set that the master data image as the image we're going to compare the current image to
+  // imageB is already set as the current image
   screenshot.diff.imageA = masterScreenshotImage;
-
-  const naturalWidth = Math.round(emulateConfig.viewport.width * emulateConfig.viewport.deviceScaleFactor);
-  const naturalHeight = Math.round(emulateConfig.viewport.height * emulateConfig.viewport.deviceScaleFactor);
 
   // compare only if the image hashes are different
   if (screenshot.diff.imageA !== screenshot.diff.imageB) {
-    // compare the two images pixel by pixel to
-    // figure out a mismatch value
+    // we know the images are not identical since they have different hashes
+    // create a cache key from the two hashes
+    screenshot.diff.cacheKey = getCacheKey(screenshot.diff.imageA, screenshot.diff.imageB, pixelmatchThreshold);
 
-    screenshot.diff.mismatchedPixels = await getMismatchedPixels(
-      screenshotBuildData.cacheDir,
-      screenshotBuildData.imagesDir,
-      screenshot.diff.imageA,
-      screenshot.diff.imageB,
-      naturalWidth,
-      naturalHeight,
-      pixelmatchThreshold
-    );
+    // let's see if we've already calculated the mismatched pixels already
+    const cachedMismatchedPixels = screenshotBuildData.cache[screenshot.diff.cacheKey];
+    if (typeof cachedMismatchedPixels === 'number' && !isNaN(cachedMismatchedPixels)) {
+      // awesome, we've got cached data so we
+      // can skip having to do the heavy pixelmatch comparison
+      screenshot.diff.mismatchedPixels = cachedMismatchedPixels;
+
+    } else {
+      // images are not identical
+      // and we don't have any cached data so let's
+      // compare the two images pixel by pixel to
+      // figure out a mismatch value
+
+      // figure out the actual width and height of the screenshot
+      const naturalWidth = Math.round(emulateConfig.viewport.width * emulateConfig.viewport.deviceScaleFactor);
+      const naturalHeight = Math.round(emulateConfig.viewport.height * emulateConfig.viewport.deviceScaleFactor);
+
+      const pixelMatchInput: d.PixelMatchInput = {
+        imageAPath: join(screenshotBuildData.imagesDir, screenshot.diff.imageA),
+        imageBPath: join(screenshotBuildData.imagesDir, screenshot.diff.imageB),
+        width: naturalWidth,
+        height: naturalHeight,
+        pixelmatchThreshold: pixelmatchThreshold
+      };
+
+      screenshot.diff.mismatchedPixels = await getMismatchedPixels(
+        screenshotBuildData.pixelmatchModulePath,
+        pixelMatchInput
+      );
+    }
   }
 
   await writeScreenshotData(screenshotBuildData.currentBuildDir, screenshot);
 
   return screenshot.diff;
+}
+
+
+async function getMismatchedPixels(pixelmatchModulePath: string, pixelMatchInput: d.PixelMatchInput) {
+  return new Promise<number>((resolve, reject) => {
+    const timeout = 30000;
+    const tmr = setTimeout(() => {
+      reject(`getMismatchedPixels timeout: ${timeout}ms`);
+    }, timeout);
+
+    try {
+      const filteredExecArgs = process.execArgv.filter(
+        v => !/^--(debug|inspect)/.test(v)
+      );
+
+      const options = {
+        execArgv: filteredExecArgs,
+        env: process.env,
+        cwd: process.cwd(),
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'] as any
+      };
+
+      const pixelMatchProcess = fork(pixelmatchModulePath, [], options);
+
+      pixelMatchProcess.on('message', data => {
+        pixelMatchProcess.kill();
+        clearTimeout(tmr);
+        resolve(data);
+      });
+
+      pixelMatchProcess.on('error', err => {
+        clearTimeout(tmr);
+        reject(err);
+      });
+
+      pixelMatchProcess.send(pixelMatchInput);
+
+    } catch (e) {
+      clearTimeout(tmr);
+      reject(`getMismatchedPixels error: ${e}`);
+    }
+  });
+}
+
+
+function getCacheKey(imageA: string, imageB: string, pixelmatchThreshold: number) {
+  const hash = createHash('md5');
+  hash.update(`${imageA}:${imageB}:${pixelmatchThreshold}`);
+  return hash.digest('hex').substr(0, 10);
 }
 
 

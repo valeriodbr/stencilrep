@@ -110,10 +110,6 @@ export class NodeSystem implements d.StencilSystem {
     };
   }
 
-  async autoprefixCss(input: string, opts: any): Promise<string> {
-    return this.sysWorker.run('autoprefixCss', [input, opts]);
-  }
-
   async copy(copyTasks: d.CopyTask[]): Promise<d.CopyResults> {
     return this.sysWorker.run('copy', [copyTasks], { isLongRunningTask: true });
   }
@@ -176,8 +172,8 @@ export class NodeSystem implements d.StencilSystem {
     return this.nodeLazyRequire;
   }
 
-  minifyCss(input: string, filePath?: string, opts: any = {}) {
-    return this.sysWorker.run('minifyCss', [input, filePath, opts]);
+  optimizeCss(inputOpts: d.OptimizeCssInput) {
+    return this.sysWorker.run('optimizeCss', [inputOpts]);
   }
 
   minifyJs(input: string, opts?: any) {
