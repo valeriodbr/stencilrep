@@ -70,3 +70,22 @@ export interface PageCoverageEntry {
   totalBytes?: number;
   usedBytes?: number;
 }
+
+
+export interface PrerenderProcessor {
+  init(): Promise<void>;
+  queue(source: string, paths: string[]): Promise<void>;
+  next(maxConcurrentPrerender: number): Promise<ProcessorNext>;
+  completed(path: string): Promise<void>;
+  finalize(): Promise<{
+    totalPrerendered: number;
+  }>;
+}
+
+export interface ProcessorNext {
+  isCompleted?: boolean;
+  maxConcurrent?: boolean;
+  noPending?: boolean;
+  path?: string;
+  source?: string;
+}

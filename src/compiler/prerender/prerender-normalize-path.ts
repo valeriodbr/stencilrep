@@ -36,10 +36,27 @@ export function getWritePathFromUrl(config: d.Config, outputTarget: d.OutputTarg
 export const PRERENDERED_SUFFIX = `.prerendered`;
 
 
+export function normalizePrerenderPaths(config: d.Config, outputTarget: d.OutputTargetWww, inputPaths: string[]) {
+  const outputPaths: string[] = [];
 
-export function queuePathForPrerender(config: d.Config, outputTarget: d.OutputTargetWww, queuedPaths: string[], processingPaths: Set<string>, completedPaths: Set<string>, path: string) {
+  if (Array.isArray(inputPaths)) {
+    inputPaths.forEach(inputPath => {
+      const outputPath = normalizePrerenderPath(config, outputTarget, inputPath);
+      if (typeof outputPath === 'string') {
+        if (!outputPath.includes(outputPath)) {
+          outputPaths.push(outputPath);
+        }
+      }
+    });
+  }
+
+  return outputPaths;
+}
+
+
+export function normalizePrerenderPath(config: d.Config, outputTarget: d.OutputTargetWww, path: string) {
   if (typeof path !== 'string') {
-    return;
+    return null;
   }
 
   const parsedUrl = config.sys.url.parse(path);
@@ -59,17 +76,5 @@ export function queuePathForPrerender(config: d.Config, outputTarget: d.OutputTa
     }
   }
 
-  if (queuedPaths.includes(path)) {
-    return;
-  }
-
-  if (processingPaths.has(path)) {
-    return;
-  }
-
-  if (completedPaths.has(path)) {
-    return;
-  }
-
-  queuedPaths.push(path);
+  return path;
 }

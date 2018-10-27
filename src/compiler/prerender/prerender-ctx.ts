@@ -1,6 +1,6 @@
 import * as d from '../../declarations';
 import { catchError, hasError, normalizePath } from '../util';
-import { getWritePathFromUrl, queuePathForPrerender } from './prerender-utils';
+import { getWritePathFromUrl, normalizePrerenderPaths } from './prerender-normalize-path';
 import { prepareIndexHtmlBeforePrerender } from './prepare-index-html';
 import * as puppeteer from 'puppeteer'; // for types only
 
@@ -10,11 +10,8 @@ export class PrerenderCtx {
   private devServerOrigin: string;
   private devServerHost: string;
   private prerenderingDone: Function;
-  queue: string[] = [];
-  processing = new Set();
-  completed = new Set();
 
-  constructor(public config: d.Config, public compilerCtx: d.CompilerCtx, public buildCtx: d.BuildCtx, public outputTarget: d.OutputTargetWww) {
+  constructor(public config: d.Config, public compilerCtx: d.CompilerCtx, public buildCtx: d.BuildCtx, public outputTarget: d.OutputTargetWww, public processor: d.PrerenderProcessor) {
     const devServerUrl = config.sys.url.parse(config.devServer.browserUrl);
     this.devServerHost = devServerUrl.host;
     this.devServerOrigin = `http://${this.devServerHost}`;
@@ -38,17 +35,22 @@ export class PrerenderCtx {
     }
 
     // promise resolves when all locations have been prerendered
-    await new Promise(prerenderingDone => {
+    await new Promise(async (prerenderingDone) => {
       this.prerenderingDone = prerenderingDone;
 
       this.compilerCtx.events.subscribe('prerenderedLocation', this.drainQueue.bind(this));
 
       // add these paths to our array of pending paths
-      this.queue.push(...paths);
+      await this.queue('#entry', paths);
 
       // let's kick it off
       this.next();
     });
+  }
+
+  async queue(source: string, paths: string[]) {
+    const normalizedPaths = normalizePrerenderPaths(this.config, this.outputTarget, paths);
+    await this.processor.queue(source, normalizedPaths);
   }
 
   async next() {
@@ -57,38 +59,14 @@ export class PrerenderCtx {
     });
   }
 
-  drainQueue() {
-    // listen for when a location has finished prerendering
-    // check to see if everything in the queue has been completed
-    const allCompleted = (this.processing.size === 0 && this.queue.length === 0);
-    if (allCompleted) {
-      // we're not actively processing anything
-      // and there aren't anymore urls in the queue to be prerendered
-      // so looks like our job here is done, good work team
+  async drainQueue() {
+    const next = await this.processor.next(this.config.maxConcurrentPrerender);
+
+    if (next.isCompleted) {
       this.prerenderingDone();
-      return;
-    }
 
-    // more in the queue yet, let's keep going
-    for (let i = 0; i < this.config.maxConcurrentPrerender * 2; i++) {
-      // count how many are actively processing right now
-      if (this.processing.size >= this.config.maxConcurrentPrerender) {
-        // whooaa, slow down there buddy, let's not get carried away
-        return;
-      }
-
-      const path = this.queue.shift();
-      if (!path || this.processing.has(path) || this.completed.has(path)) {
-        // no pending paths in the queue, let's chill out
-        // there's probably some in the processing still being worked on
-        return;
-      }
-
-      // move this url to processing
-      this.processing.add(path);
-
-      // begin the async prerendering operation for this location
-      this.prerender(path);
+    } else if (typeof next.path === 'string') {
+      this.prerender(next.path);
     }
   }
 
@@ -126,16 +104,12 @@ export class PrerenderCtx {
           if (!hasError(results.diagnostics)) {
             // no issues prerendering!
 
-            if (this.outputTarget.prerenderUrlCrawl && Array.isArray(results.anchorPaths)) {
+            if (this.outputTarget.prerenderUrlCrawl) {
               // we do want to keep crawling urls
               // add any urls we found to the queue to be prerendered still
-              results.anchorPaths.forEach(anchorPath => {
-                try {
-                  queuePathForPrerender(this.config, this.outputTarget, this.queue, this.processing, this.completed, anchorPath);
-                } catch (e) {
-                  catchError(this.buildCtx.diagnostics, e);
-                }
-              });
+              const normalizedPaths = normalizePrerenderPaths(this.config, this.outputTarget, results.anchorPaths);
+
+              await this.queue(path, normalizedPaths);
             }
 
           } else {
@@ -158,10 +132,7 @@ export class PrerenderCtx {
       // it from the processing set and add to completed set
 
       // we're done processing now
-      this.processing.delete(path);
-
-      // consider it completed
-      this.completed.add(path);
+      await this.processor.completed(path);
     }
 
     logFinished(this.config.logger, start, path);
@@ -170,15 +141,43 @@ export class PrerenderCtx {
     this.next();
   }
 
-  async destroy() {
-    await closePuppeteerBrowser(this.browser);
+  async finalize() {
+    await finalizePrerenderResults(this.config, this.outputTarget.dir);
 
-    this.browser = null;
-    this.config = null;
-    this.compilerCtx = null;
-    this.buildCtx = null;
+    try {
+      await closePuppeteerBrowser(this.browser);
+
+      this.browser = null;
+      this.config = null;
+      this.compilerCtx = null;
+      this.buildCtx = null;
+    } catch (e) {
+      catchError(this.buildCtx.diagnostics, e);
+    }
+
+    return await this.processor.finalize();
   }
 
+}
+
+
+async function finalizePrerenderResults(config: d.Config, dir: string) {
+  const items = await config.sys.fs.readdir(dir);
+
+  for (const item of items) {
+    const itemPath = config.sys.path.join(dir, item);
+
+    if (item.endsWith(`.prerendered`)) {
+      const newPath = itemPath.replace(`.prerendered`, '');
+      await config.sys.fs.rename(itemPath, newPath);
+
+    } else {
+      const stat = await config.sys.fs.stat(itemPath);
+      if (stat.isDirectory()) {
+        await finalizePrerenderResults(config, itemPath);
+      }
+    }
+  }
 }
 
 

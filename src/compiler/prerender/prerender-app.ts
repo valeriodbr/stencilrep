@@ -1,6 +1,7 @@
 import * as d from '../../declarations';
 import { buildWarn, catchError, hasError } from '../util';
 import { PrerenderCtx } from './prerender-ctx';
+import { PrerenderProcessor } from './prerender-processor';
 
 
 export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, _entryModules: d.EntryModule[]) {
@@ -12,85 +13,77 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
   // kick off the prerendering for each output target (probably only 1, but who knows)
   for (const outputTarget of outputTargets) {
     // create a context object to hold all things useful during prerendering
-    const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget);
-
-    try {
-      await Promise.all([
-        prerenderCtx.startBrowser(),
-        prerenderCtx.prepareIndexHtml()
-      ]);
-
-      await prerenderOutputTarget(prerenderCtx);
-
-    } catch (e) {
-      catchError(this.buildCtx.diagnostics, e);
+    if (hasError(buildCtx.diagnostics)) {
+      return;
     }
 
-    // shut it down!
-    await prerenderCtx.destroy();
+    try {
+      await prerenderOutputTarget(config, compilerCtx, buildCtx, outputTarget);
+
+    } catch (e) {
+      catchError(buildCtx.diagnostics, e);
+    }
   }
 }
 
 
-async function prerenderOutputTarget(prerenderCtx: PrerenderCtx) {
-  if (hasError(prerenderCtx.buildCtx.diagnostics)) {
-    return;
-  }
-
+async function prerenderOutputTarget(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww) {
   // get the prerender urls queued up
-  const pathsQueue = prerenderCtx.outputTarget.prerenderLocations.map(prerenderLocation => {
-    return prerenderLocation.path;
+  const entryPaths = outputTarget.prerenderLocations.map(loc => {
+    return loc.path;
   }).filter(path => path.startsWith('/'));
 
-  if (!pathsQueue.length) {
-    const d = buildWarn(prerenderCtx.buildCtx.diagnostics);
+  if (!entryPaths.length) {
+    const d = buildWarn(buildCtx.diagnostics);
     d.messageText = `No urls found in the prerender config`;
     return;
   }
 
-  // let's do this!!!
-  // keep track of how long the entire build process takes
-  const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`);
+  // create a processor that handles what needs
+  // to be processed and what's completed
+  const processor = new PrerenderProcessor();
+  await processor.init();
+
+  // create the prerendering context
+  const prerenderCtx = new PrerenderCtx(config, compilerCtx, buildCtx, outputTarget, processor);
+
+  // start up the browser and prepare the index html
+  await Promise.all([
+    prerenderCtx.startBrowser(),
+    prerenderCtx.prepareIndexHtml()
+  ]);
 
   if (prerenderCtx.outputTarget.pageAnalysis) {
+    // empty out the page analysis directory for this fresh build
     await prerenderCtx.compilerCtx.fs.emptyDir(prerenderCtx.outputTarget.pageAnalysis.dir);
     await prerenderCtx.compilerCtx.fs.commit();
   }
 
-  try {
-    await prerenderCtx.prerenderAll(pathsQueue);
+  // keep track of how long the entire build process takes
+  const timeSpan = prerenderCtx.buildCtx.createTimeSpan(`prerendering started`);
 
-    // prerendering has finished
-    await finalizePrerenderResults(prerenderCtx.config, prerenderCtx.outputTarget.dir);
+  try {
+    // let's do this!!!
+    await prerenderCtx.prerenderAll(entryPaths);
 
   } catch (e) {
     catchError(prerenderCtx.buildCtx.diagnostics, e);
   }
 
-  if (hasError(prerenderCtx.buildCtx.diagnostics)) {
-    timeSpan.finish(`prerendering failed`);
+  try {
+    // woot! all done
+    const finalizeResults = await prerenderCtx.finalize();
 
-  } else {
-    timeSpan.finish(`prerendered urls: ${prerenderCtx.completed.size}`);
-  }
-}
-
-
-async function finalizePrerenderResults(config: d.Config, dir: string) {
-  const items = await config.sys.fs.readdir(dir);
-
-  for (const item of items) {
-    const itemPath = config.sys.path.join(dir, item);
-
-    if (item.endsWith(`.prerendered`)) {
-      const newPath = itemPath.replace(`.prerendered`, '');
-      await config.sys.fs.rename(itemPath, newPath);
+    if (hasError(prerenderCtx.buildCtx.diagnostics)) {
+      // :(
+      timeSpan.finish(`prerendering failed`);
 
     } else {
-      const stat = await config.sys.fs.stat(itemPath);
-      if (stat.isDirectory()) {
-        await finalizePrerenderResults(config, itemPath);
-      }
+      // cool, let's see how many we prerendered
+      timeSpan.finish(`prerendered: ${finalizeResults.totalPrerendered}`);
     }
+
+  } catch (e) {
+    catchError(prerenderCtx.buildCtx.diagnostics, e);
   }
 }
