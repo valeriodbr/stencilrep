@@ -13,7 +13,7 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
 
   try {
     const connectOpts: puppeteer.ConnectOptions = {
-      browserWSEndpoint: input.browserWSEndpoint,
+      browserWSEndpoint: input.browserWsEndpoint,
       ignoreHTTPSErrors: true
     };
 
@@ -34,37 +34,75 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
       await startPageAnalysis(page);
     }
 
-    await page.goto(input.url, {
+    const start = Date.now();
+
+    const url = `http://${input.devServerHost}${input.path}`;
+
+    const rsp = await page.goto(url, {
       waitUntil: 'load',
-      timeout: 10000
+      timeout: 15000
     });
 
-    const isStencilApp = await page.evaluate(() => {
-      // prerendered index.html manually adds window.stencilApp
-      // so we know to wait on the app to load or not
-      return !!((window as StencilWindow).stencilApp);
-    });
+    const headers = rsp.headers();
 
-    if (isStencilApp) {
-      await page.waitForFunction('window.stencilAppLoadDuration');
+    pageAnalysis.responseStatus = rsp.status();
+
+    if (pageAnalysis.responseStatus >= 300) {
+      // not a 200 response code
+      if (input.pageAnalysisDir) {
+        await stopPageAnalysis(input, pageAnalysis, page);
+      }
+
+      if (pageAnalysis.responseStatus === 301 || pageAnalysis.responseStatus === 302) {
+        // redirect
+        pageAnalysis.redirectLocation = headers['location'];
+      }
+
+    } else {
+      // ok response
+      if (headers['X-Directory-Index']) {
+        // directory index, so don't bother
+        if (input.pageAnalysisDir) {
+          await stopPageAnalysis(input, pageAnalysis, page);
+        }
+
+      } else {
+        const isStencilApp = await page.evaluate(() => {
+          // prerendered index.html manually adds window.stencilApp
+          // so we know to wait on the app to load or not
+          return !!((window as StencilWindow).stencilApp);
+        });
+
+        if (isStencilApp) {
+          await page.waitForFunction('window.stencilAppLoadDuration');
+        }
+
+        if (input.pageAnalysisDir) {
+          await stopPageAnalysis(input, pageAnalysis, page);
+        }
+
+        doc = await prerenderToDocument(input, page, pageAnalysis);
+
+        pageAnalysis.prerenderDuration = (Date.now() - start);
+      }
     }
 
-    if (input.pageAnalysisDir) {
-      await stopPageAnalysis(input, pageAnalysis, page);
-    }
-
-    doc = await prerenderToDocument(input, page, pageAnalysis);
 
   } catch (e) {
     catchError(pageAnalysis.diagnostics, e);
 
   } finally {
     if (page) {
-      await page.close();
+      try {
+        await page.close();
+      } catch (e) {}
       page = null;
     }
+
     if (browser) {
-      await browser.disconnect();
+      try {
+        await browser.disconnect();
+      } catch (e) {}
       browser = null;
     }
   }
@@ -137,9 +175,9 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
         const tagName = elm.nodeName.toLowerCase();
 
         if (tagName === 'a') {
-          const path = getResolvedPath((elm as HTMLAnchorElement).href);
-          if (path && !pageData.anchorPaths.includes(path)) {
-            pageData.anchorPaths.push(path);
+          const anchorPath = getResolvedPath((elm as HTMLAnchorElement).href);
+          if (anchorPath && anchorPath !== input.path && !pageData.anchorPaths.includes(anchorPath)) {
+            pageData.anchorPaths.push(anchorPath);
           }
 
         } else if (tagName === 'script') {

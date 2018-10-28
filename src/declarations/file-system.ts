@@ -11,6 +11,7 @@ export interface FileSystem {
   readFile(filePath: string): Promise<string>;
   readFileSync(filePath: string): string;
   rename(oldPath: string, newPath: string): Promise<void>;
+  renameSync(oldPath: string, newPath: string): void;
   rmdir(dirPath: string): Promise<void>;
   stat(path: string): Promise<FsStats>;
   statSync(path: string): FsStats;

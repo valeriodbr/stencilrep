@@ -43,7 +43,7 @@ export function normalizePrerenderPaths(config: d.Config, outputTarget: d.Output
     inputPaths.forEach(inputPath => {
       const outputPath = normalizePrerenderPath(config, outputTarget, inputPath);
       if (typeof outputPath === 'string') {
-        if (!outputPath.includes(outputPath)) {
+        if (!outputPaths.includes(outputPath)) {
           outputPaths.push(outputPath);
         }
       }
@@ -59,9 +59,9 @@ export function normalizePrerenderPath(config: d.Config, outputTarget: d.OutputT
     return null;
   }
 
-  const parsedUrl = config.sys.url.parse(path);
-
   if (!outputTarget.prerenderPathHash || !outputTarget.prerenderPathQuery) {
+    const parsedUrl = config.sys.url.parse(path);
+
     const hash = (parsedUrl.hash || '').split('?')[0];
     const search = (parsedUrl.search || '').split('#')[0];
 

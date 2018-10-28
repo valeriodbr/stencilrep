@@ -91,6 +91,10 @@ export class NodeFs implements d.FileSystem {
     });
   }
 
+  renameSync(oldPath: string, newPath: string) {
+    fs.renameSync(oldPath, newPath);
+  }
+
   rmdir(dirPath: string) {
     return new Promise<void>((resolve, reject) => {
       fs.rmdir(dirPath, (err: any) => {

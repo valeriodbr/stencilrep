@@ -91,7 +91,7 @@ export async function build(config: d.Config, compilerCtx: d.CompilerCtx, buildC
     if (buildCtx.hasError || !buildCtx.isActiveBuild) return buildCtx.abort();
 
     // await on our other optional stuff like docs, service workers, etc.
-    await buildAuxiliaries(config, compilerCtx, buildCtx, entryModules, cmpRegistry);
+    await buildAuxiliaries(config, compilerCtx, buildCtx, cmpRegistry);
     if (buildCtx.hasError || !buildCtx.isActiveBuild) return buildCtx.abort();
 
   } catch (e) {

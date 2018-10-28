@@ -5,14 +5,14 @@ import { generateProxies } from '../distribution/distribution';
 import { prerenderApp } from '../prerender/prerender-app';
 
 
-export async function buildAuxiliaries(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, entryModules: d.EntryModule[], cmpRegistry: d.ComponentRegistry) {
+export async function buildAuxiliaries(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, cmpRegistry: d.ComponentRegistry) {
   if (buildCtx.hasError || !buildCtx.isActiveBuild) {
     return;
   }
 
   // let's prerender this first
   // and run service workers on top of this when it's done
-  await prerenderApp(config, compilerCtx, buildCtx, entryModules);
+  await prerenderApp(config, compilerCtx, buildCtx);
 
   // generate component docs
   // and service workers can run in parallel

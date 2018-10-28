@@ -2,9 +2,8 @@ import * as d from '.';
 
 
 export interface PrerenderInput {
-  browserWSEndpoint: string;
+  browserWsEndpoint: string;
   devServerHost: string;
-  url: string;
   path: string;
   filePath: string;
   pageAnalysisDir: string;
@@ -21,6 +20,13 @@ export interface PrerenderResults {
 }
 
 
+export interface PrerenderMainResults {
+  workerPrerendered: number;
+  isMaster?: boolean;
+  totalPrerendered?: number;
+}
+
+
 export interface PageAnalysis {
   path: string;
   pathname: string;
@@ -28,6 +34,9 @@ export interface PageAnalysis {
   hash: string;
   anchorPaths: string[];
   diagnostics: d.Diagnostic[];
+  prerenderDuration?: number;
+  responseStatus?: number;
+  redirectLocation?: string;
   pageErrors: { message: string; stack?: string; }[];
   requests: PageRequest[];
   metrics?: PageMetrics;
@@ -72,20 +81,29 @@ export interface PageCoverageEntry {
 }
 
 
-export interface PrerenderProcessor {
+export interface PrerenderContext {
+  config: d.Config;
+  compilerCtx: d.CompilerCtx;
+  buildCtx: d.BuildCtx;
+  outputTarget: d.OutputTargetWww;
+  job: PrerenderJob;
+  browserWsEndpoint: string;
+  devServerHost: string;
+  completedCallback(results: d.PrerenderMainResults): void;
+  workerPrerendered: number;
+}
+
+
+export interface PrerenderJob {
   init(): Promise<void>;
-  queue(source: string, paths: string[]): Promise<void>;
+  queue(paths: string[]): Promise<void>;
   next(maxConcurrentPrerender: number): Promise<ProcessorNext>;
   completed(path: string): Promise<void>;
-  finalize(): Promise<{
-    totalPrerendered: number;
-  }>;
+  finalize(): Promise<void>;
 }
 
 export interface ProcessorNext {
-  isCompleted?: boolean;
-  maxConcurrent?: boolean;
-  noPending?: boolean;
-  path?: string;
-  source?: string;
+  isCompleted: boolean;
+  isMasterWorker?: boolean;
+  paths: string[];
 }

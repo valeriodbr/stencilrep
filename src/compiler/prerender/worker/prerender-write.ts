@@ -30,11 +30,11 @@ export async function writePrerenderResults(input: d.PrerenderInput, pageAnalysi
 
 
 export async function writePageAnalysis(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis) {
-  const fileName = encodeURIComponent(input.path) + '.json';
+  const fileName = `${encodeURIComponent(input.path)}.json`;
   const filePath = path.join(input.pageAnalysisDir, fileName);
 
   return new Promise((resolve, reject) => {
-    fs.writeFile(filePath, JSON.stringify(pageAnalysis, null, 2), err => {
+    fs.writeFile(filePath, JSON.stringify(pageAnalysis, null, 1), err => {
       if (err) {
         reject(err);
       } else {

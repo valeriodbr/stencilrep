@@ -137,19 +137,27 @@ export class TestingFs implements d.FileSystem {
   rename(oldPath: string, newPath: string) {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        oldPath = normalizePath(oldPath);
-        newPath = normalizePath(newPath);
-
-        if (!this.data[oldPath]) {
-          reject(`rename, path doesn't exists: ${oldPath}`);
-        } else {
-          const newData = this.data[oldPath];
-          delete this.data[oldPath];
-          this.data[newPath] = newData;
+        try {
+          this.renameSync(oldPath, newPath);
           resolve();
+        } catch (e) {
+          reject(e);
         }
       }, this.resolveTime);
     });
+  }
+
+  renameSync(oldPath: string, newPath: string) {
+    oldPath = normalizePath(oldPath);
+    newPath = normalizePath(newPath);
+
+    if (!this.data[oldPath]) {
+      throw new Error(`rename, path doesn't exists: ${oldPath}`);
+    } else {
+      const newData = this.data[oldPath];
+      delete this.data[oldPath];
+      this.data[newPath] = newData;
+    }
   }
 
   rmdir(dirPath: string) {

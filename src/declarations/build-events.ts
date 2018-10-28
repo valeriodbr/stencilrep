@@ -10,12 +10,10 @@ export interface BuildEvents {
   subscribe(eventName: 'fsChange', cb: (fsWatchResults: d.FsWatchResults) => void): Function;
   subscribe(eventName: 'buildFinish', cb: (buildResults: d.BuildResults) => void): Function;
   subscribe(eventName: 'buildLog', cb: (buildLog: d.BuildLog) => void): Function;
-  subscribe(eventName: 'prerenderedLocation', cb: () => void): Function;
   unsubscribe(eventName: string, cb: Function): void;
   unsubscribeAll(): void;
   emit(eventName: 'buildNoChange', buildNoChange: d.BuildNoChangeResults): void;
   emit(eventName: 'buildLog', buildLog: d.BuildLog): void;
   emit(eventName: 'fsChange', fsWatchResults: d.FsWatchResults): void;
-  emit(eventName: 'prerenderedLocation'): void;
   emit(eventName: d.CompilerEventName, ...args: any[]): void;
 }

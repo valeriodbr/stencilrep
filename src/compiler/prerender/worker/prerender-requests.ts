@@ -30,7 +30,7 @@ function addRequest(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis, parse
 
   if (input.devServerHost === parsedUrl.host) {
     pageAnalysis.requests.push({
-      path: parsedUrl.path,
+      path: parsedUrl.pathname + parsedUrl.search,
       status: status
     });
 
