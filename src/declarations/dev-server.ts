@@ -85,6 +85,8 @@ export interface DevResponseHeaders {
   'Content-Type'?: string;
   'Content-Length'?: number;
   'Access-Control-Allow-Origin'?: string;
+  'Content-Encoding'?: 'gzip';
+  'Vary'?: 'Accept-Encoding';
   'X-Powered-By'?: string;
   'X-Directory-Index'?: string;
 }

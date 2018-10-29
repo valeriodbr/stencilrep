@@ -109,6 +109,11 @@ export function isSimpleText(filePath: string) {
 }
 
 
+export function isPrerenderer(req: d.HttpRequest) {
+  return req.headers && req.headers['user-agent'] === 'stencil-prerenderer';
+}
+
+
 export function isDevClient(pathname: string) {
   return pathname.startsWith(DEV_SERVER_URL);
 }
@@ -136,16 +141,12 @@ export const DEV_SERVER_INIT_URL = `${DEV_SERVER_URL}-init`;
 export const OPEN_IN_EDITOR_URL = `${DEV_SERVER_URL}-open-in-editor`;
 
 
-export function shouldCompress(devServerConfig: d.DevServerConfig, req: d.HttpRequest, contentLength: number) {
+export function shouldCompress(devServerConfig: d.DevServerConfig, req: d.HttpRequest) {
   if (!devServerConfig.gzip) {
     return false;
   }
 
   if (req.method !== 'GET') {
-    return false;
-  }
-
-  if (contentLength < 1024) {
     return false;
   }
 
@@ -155,6 +156,10 @@ export function shouldCompress(devServerConfig: d.DevServerConfig, req: d.HttpRe
   }
 
   if (!acceptEncoding.includes('gzip')) {
+    return false;
+  }
+
+  if (isPrerenderer(req)) {
     return false;
   }
 

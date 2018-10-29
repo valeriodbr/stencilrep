@@ -1,5 +1,5 @@
 import * as d from '../declarations';
-import { isDevClient } from './util';
+import { isDevClient, isPrerenderer } from './util';
 import { normalizePath } from '../compiler/util';
 import { serveDevClient } from './serve-dev-client';
 import { serveFile } from './serve-file';
@@ -28,6 +28,11 @@ export function createRequestHandler(devServerConfig: d.DevServerConfig, fs: d.F
 
       if (isDevClient(req.pathname)) {
         return serveDevClient(devServerConfig, fs, req, res);
+      }
+
+      if (isPrerenderer(req)) {
+        req.filePath = path.join(devServerConfig.root, devServerConfig.historyApiFallback.index);
+        return serveFile(devServerConfig, fs, req, res);
       }
 
       try {
@@ -68,6 +73,7 @@ export function createRequestHandler(devServerConfig: d.DevServerConfig, fs: d.F
 function normalizeHttpRequest(devServerConfig: d.DevServerConfig, incomingReq: http.IncomingMessage) {
   const req: d.HttpRequest = {
     method: (incomingReq.method || 'GET').toUpperCase() as any,
+    headers: incomingReq.headers as any,
     acceptHeader: (incomingReq.headers && typeof incomingReq.headers.accept === 'string' && incomingReq.headers.accept) || '',
     url: (incomingReq.url || '').trim() || '',
     host: (incomingReq.headers && typeof incomingReq.headers.host === 'string' && incomingReq.headers.host) || null
