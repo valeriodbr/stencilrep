@@ -1,9 +1,9 @@
 import * as d from '../../../declarations';
-import * as puppeteer from 'puppeteer';
+import { cancelPageAnalysis, startPageAnalysis, stopPageAnalysis } from './page-analysis';
 import { catchError } from '../../util';
 import { interceptRequests } from './prerender-requests';
-import { startPageAnalysis, stopPageAnalysis } from './page-analysis';
 import { parseHtmlToDocument } from '@stencil/core/mock-doc';
+import * as puppeteer from 'puppeteer';
 
 
 export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis) {
@@ -24,6 +24,8 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
     // start up a new page
     page = await browser.newPage();
 
+    await page.setUserAgent('stencil-prerenderer');
+
     await createAppLoadListener(page);
 
     addPageListeners(page, pageAnalysis);
@@ -43,27 +45,32 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
       timeout: 15000
     });
 
-    const headers = rsp.headers();
-
     pageAnalysis.responseStatus = rsp.status();
+
+    const headers = rsp.headers();
+    if (headers['x-directory-index']) {
+      pageAnalysis.directoryIndex = true;
+    }
+    pageAnalysis.redirectLocation = headers['location'];
 
     if (pageAnalysis.responseStatus >= 300) {
       // not a 200 response code
       if (input.pageAnalysisDir) {
-        await stopPageAnalysis(input, pageAnalysis, page);
+        await cancelPageAnalysis(page);
       }
 
-      if (pageAnalysis.responseStatus === 301 || pageAnalysis.responseStatus === 302) {
-        // redirect
-        pageAnalysis.redirectLocation = headers['location'];
+      if (pageAnalysis.responseStatus >= 500) {
+        // 500 error
+        doc = await prerenderToDocument(input, page, pageAnalysis);
+        pageAnalysis.html = doc.body.innerText;
       }
 
     } else {
       // ok response
-      if (headers['X-Directory-Index']) {
+      if (pageAnalysis.directoryIndex) {
         // directory index, so don't bother
         if (input.pageAnalysisDir) {
-          await stopPageAnalysis(input, pageAnalysis, page);
+          await cancelPageAnalysis(page);
         }
 
       } else {
@@ -82,11 +89,10 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
         }
 
         doc = await prerenderToDocument(input, page, pageAnalysis);
-
-        pageAnalysis.prerenderDuration = (Date.now() - start);
       }
     }
 
+    pageAnalysis.prerenderDuration = (Date.now() - start);
 
   } catch (e) {
     catchError(pageAnalysis.diagnostics, e);
@@ -113,6 +119,7 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
 
 async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page, pageAnalysis: d.PageAnalysis) {
   const pageUpdateConfig: PageUpdateConfig = {
+    pathName: input.path,
     pathQuery: input.pathQuery,
     pathHash: input.pathHash
   };
@@ -176,7 +183,10 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
 
         if (tagName === 'a') {
           const anchorPath = getResolvedPath((elm as HTMLAnchorElement).href);
-          if (anchorPath && anchorPath !== input.path && !pageData.anchorPaths.includes(anchorPath)) {
+          if (anchorPath &&
+             anchorPath !== pageUpdateConfig.pathName &&
+             !anchorPath.endsWith('.prerendered') &&
+             !pageData.anchorPaths.includes(anchorPath)) {
             pageData.anchorPaths.push(anchorPath);
           }
 
@@ -259,6 +269,7 @@ async function createAppLoadListener(page: puppeteer.Page) {
 
 
 interface PageUpdateConfig {
+  pathName: string;
   pathQuery: boolean;
   pathHash: boolean;
 }

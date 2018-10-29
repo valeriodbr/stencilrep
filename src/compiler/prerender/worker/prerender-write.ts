@@ -34,7 +34,7 @@ export async function writePageAnalysis(input: d.PrerenderInput, pageAnalysis: d
   const filePath = path.join(input.pageAnalysisDir, fileName);
 
   return new Promise((resolve, reject) => {
-    fs.writeFile(filePath, JSON.stringify(pageAnalysis, null, 1), err => {
+    fs.writeFile(filePath, JSON.stringify(pageAnalysis, null, 2), err => {
       if (err) {
         reject(err);
       } else {

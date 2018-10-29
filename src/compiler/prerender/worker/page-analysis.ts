@@ -38,6 +38,14 @@ export async function stopPageAnalysis(input: d.PrerenderInput, pageAnalysis: d.
 }
 
 
+export async function cancelPageAnalysis(page: puppeteer.Page) {
+  await Promise.all([
+    page.coverage.stopJSCoverage(),
+    page.coverage.stopCSSCoverage()
+  ]);
+}
+
+
 function calulateCoverage(devServerHost: string, entries: puppeteer.CoverageEntry[]) {
   return entries.map(entry => {
     const converageEntry: d.PageCoverageEntry = {};

@@ -41,6 +41,8 @@ export interface PageAnalysis {
   requests: PageRequest[];
   metrics?: PageMetrics;
   coverage?: PageCoverage;
+  html?: string;
+  directoryIndex?: boolean;
 }
 
 
