@@ -1,11 +1,11 @@
 import * as d from '../declarations';
+import { isPrerenderer, responseHeaders } from './util';
 import { serve404 } from './serve-404';
 import { serve500 } from './serve-500';
 import { serveFile } from './serve-file';
 import * as http from 'http';
 import * as path from 'path';
 import * as url from 'url';
-import { responseHeaders } from './util';
 
 
 export async function serveDirectoryIndex(devServerConfig: d.DevServerConfig, fs: d.FileSystem, req: d.HttpRequest, res: http.ServerResponse) {
@@ -25,6 +25,11 @@ export async function serveDirectoryIndex(devServerConfig: d.DevServerConfig, fs
       'location': req.pathname + '/'
     });
     return res.end();
+  }
+
+  if (isPrerenderer(req) && devServerConfig.historyApiFallback.index) {
+    req.filePath = path.join(devServerConfig.root, devServerConfig.historyApiFallback.index);
+    return serveFile(devServerConfig, fs, req, res);
   }
 
   try {

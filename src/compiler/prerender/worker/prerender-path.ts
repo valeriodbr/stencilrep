@@ -89,6 +89,11 @@ export async function prerenderPath(input: d.PrerenderInput, pageAnalysis: d.Pag
         }
 
         doc = await prerenderToDocument(input, page, pageAnalysis);
+
+        if (doc.documentElement.getAttribute('dynamic-route-status') === '404') {
+          pageAnalysis.responseStatus = 404;
+          pageAnalysis.anchorPaths.length = 0;
+        }
       }
     }
 
@@ -219,9 +224,9 @@ async function prerenderToDocument(input: d.PrerenderInput, page: puppeteer.Page
   }, pageUpdateConfig);
 
   pageAnalysis.path = pageData.path;
-  pageAnalysis.pathname = pageData.pathname;
-  pageAnalysis.search = pageData.search;
-  pageAnalysis.hash = pageData.hash;
+  pageAnalysis.pathName = pageData.pathname;
+  pageAnalysis.pathSearch = pageData.search;
+  pageAnalysis.pathHash = pageData.hash;
   pageAnalysis.anchorPaths = pageData.anchorPaths.sort();
 
   if (pageAnalysis.metrics) {
@@ -261,7 +266,12 @@ async function createAppLoadListener(page: puppeteer.Page) {
   await page.evaluateOnNewDocument(() => {
     (window as StencilWindow).stencilWindowInit = Date.now();
 
+    const tmr = setTimeout(() => {
+      (window as StencilWindow).stencilAppLoadDuration = -1;
+    }, 10000);
+
     window.addEventListener('appload', () => {
+      clearTimeout(tmr);
       (window as StencilWindow).stencilAppLoadDuration = (Date.now() - (window as StencilWindow).stencilWindowInit);
     });
   });

@@ -14,9 +14,9 @@ export async function prerenderWorker(input: d.PrerenderInput) {
 
   const pageAnalysis: d.PageAnalysis = {
     path: input.path,
-    pathname: undefined,
-    search: undefined,
-    hash: undefined,
+    pathName: undefined,
+    pathSearch: undefined,
+    pathHash: undefined,
     anchorPaths: [],
     diagnostics: [],
     pageErrors: [],

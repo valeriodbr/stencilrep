@@ -1,5 +1,5 @@
 import * as d from '../declarations';
-import { isDevClient, isPrerenderer } from './util';
+import { isDevClient } from './util';
 import { normalizePath } from '../compiler/util';
 import { serveDevClient } from './serve-dev-client';
 import { serveFile } from './serve-file';
@@ -28,11 +28,6 @@ export function createRequestHandler(devServerConfig: d.DevServerConfig, fs: d.F
 
       if (isDevClient(req.pathname)) {
         return serveDevClient(devServerConfig, fs, req, res);
-      }
-
-      if (isPrerenderer(req)) {
-        req.filePath = path.join(devServerConfig.root, devServerConfig.historyApiFallback.index);
-        return serveFile(devServerConfig, fs, req, res);
       }
 
       try {

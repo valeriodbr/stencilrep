@@ -2,6 +2,7 @@ import * as d from '../../../declarations';
 import { serializeNodeToHtml } from '@stencil/core/mock-doc';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 
 
 export async function writePrerenderResults(input: d.PrerenderInput, pageAnalysis: d.PageAnalysis, doc: HTMLDocument) {
@@ -16,6 +17,12 @@ export async function writePrerenderResults(input: d.PrerenderInput, pageAnalysi
 
     if (pageAnalysis.metrics) {
       pageAnalysis.metrics.htmlBytes = typeof html === 'string' ? html.length : 0;
+    }
+
+    if (input.pageAnalysisDir) {
+      const hash = crypto.createHash('md5');
+      hash.update(html);
+      pageAnalysis.contentHash = hash.digest('hex');
     }
 
     fs.writeFile(input.filePath, html, (err) => {

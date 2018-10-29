@@ -59,9 +59,12 @@ export function normalizePrerenderPath(config: d.Config, outputTarget: d.OutputT
     return null;
   }
 
-  if (!outputTarget.prerenderPathHash || !outputTarget.prerenderPathQuery) {
-    const parsedUrl = config.sys.url.parse(path);
+  const parsedUrl = config.sys.url.parse(path);
+  if (parsedUrl.pathname !== '/' && parsedUrl.pathname.endsWith('/')) {
+    path = parsedUrl.pathname.substring(0, parsedUrl.pathname.length - 1);
+  }
 
+  if (!outputTarget.prerenderPathHash || !outputTarget.prerenderPathQuery) {
     const hash = (parsedUrl.hash || '').split('?')[0];
     const search = (parsedUrl.search || '').split('#')[0];
 

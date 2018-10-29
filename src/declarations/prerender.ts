@@ -29,9 +29,9 @@ export interface PrerenderMainResults {
 
 export interface PageAnalysis {
   path: string;
-  pathname: string;
-  search: string;
-  hash: string;
+  pathName: string;
+  pathSearch: string;
+  pathHash: string;
   anchorPaths: string[];
   diagnostics: d.Diagnostic[];
   prerenderDuration?: number;
@@ -43,6 +43,7 @@ export interface PageAnalysis {
   coverage?: PageCoverage;
   html?: string;
   directoryIndex?: boolean;
+  contentHash?: string;
 }
 
 
