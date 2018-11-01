@@ -25,6 +25,7 @@ export function getDefaultBuildConditionals(): d.BuildConditionals {
     observeAttr: true,
     isDev: true,
     isProd: false,
+    profile: false,
     element: true,
     event: true,
     listener: true,
@@ -65,6 +66,7 @@ export async function setBuildConditionals(
     clientSide: true,
     isDev: !!config.devMode,
     isProd: !config.devMode,
+    profile: !!(config.flags && config.flags.profile),
 
     hasSlot: !!buildCtx.hasSlot,
     hasSvg: !!buildCtx.hasSvg,
@@ -272,7 +274,7 @@ export function setBuildFromComponentContent(coreBuild: d.BuildConditionals, jsT
 
   coreBuild.cmpWillLoad = coreBuild.cmpWillLoad || jsText.includes('componentWillLoad');
   coreBuild.cmpDidLoad = coreBuild.cmpDidLoad || jsText.includes('componentDidLoad');
-  coreBuild.cmpWillUpdate = coreBuild.cmpWillLoad || jsText.includes('componentWillUpdate');
+  coreBuild.cmpWillUpdate = coreBuild.cmpWillUpdate || jsText.includes('componentWillUpdate');
   coreBuild.cmpDidUpdate = coreBuild.cmpDidUpdate || jsText.includes('componentDidUpdate');
   coreBuild.cmpDidUnload = coreBuild.cmpDidUnload || jsText.includes('componentDidUnload');
   coreBuild.hostData = coreBuild.hostData || jsText.includes('hostData');

@@ -17,9 +17,11 @@ function minify(filePath) {
 
 const DIST = path.join(__dirname, '..', 'dist');
 [
+  path.join(DIST, 'sys', 'node', 'graceful-fs.js'),
   path.join(DIST, 'sys', 'node', 'open-in-editor.js'),
   path.join(DIST, 'sys', 'node', 'sys-worker.js'),
   path.join(DIST, 'sys', 'node', 'websocket.js'),
+  path.join(DIST, 'sys', 'node', 'index.js'),
   path.join(DIST, 'mock-doc', 'index.js'),
 
 ].forEach(minify);
@@ -33,7 +35,9 @@ fs.emptyDirSync(DIST_LICENSES);
   'autoprefixer',
   'cssnano',
   'css-what',
+  'exit',
   'glob',
+  'graceful-fs',
   'is-glob',
   'minimatch',
   'opn',
@@ -64,7 +68,14 @@ function copyLicense(moduleId) {
       const licensePath = path.join(__dirname, '..', 'node_modules', moduleId, 'LICENSE.md');
       fs.accessSync(licensePath);
       licenseSrcPath = licensePath;
-    } catch (e) {}
+
+    } catch (e) {
+      try {
+        const licensePath = path.join(__dirname, '..', 'node_modules', moduleId, 'LICENSE-MIT');
+        fs.accessSync(licensePath);
+        licenseSrcPath = licensePath;
+      } catch (e) {}
+    }
   }
 
   if (licenseSrcPath != null) {

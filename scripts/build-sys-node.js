@@ -17,6 +17,7 @@ const transpileSuccess = transpile(path.join('..', 'src', 'sys', 'node', 'tsconf
 
 if (transpileSuccess) {
   // bundle external deps
+  bundleExternal('graceful-fs.js');
   bundleExternal('open-in-editor.js');
   bundleExternal('sys-worker.js');
   bundleExternal('websocket.js');
@@ -132,7 +133,8 @@ function bundleNodeSysMain() {
       'typescript',
       'url',
       'util',
-      '../../mock-doc'
+      '../../mock-doc',
+      './graceful-fs.js'
     ],
     plugins: [
       (() => {
@@ -143,6 +145,9 @@ function bundleNodeSysMain() {
             }
             if (importee === 'resolve') {
               return path.join(__dirname, 'helpers', 'resolve.js');
+            }
+            if (importee === 'graceful-fs') {
+              return './graceful-fs.js';
             }
           }
         }

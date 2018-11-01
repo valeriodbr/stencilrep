@@ -92,9 +92,18 @@ function normalizeHttpRequest(devServerConfig: d.DevServerConfig, incomingReq: h
 }
 
 
-function isValidHistoryApi(devServerConfig: d.DevServerConfig, req: d.HttpRequest) {
-  return !!devServerConfig.historyApiFallback &&
-         req.method === 'GET' &&
-         (!devServerConfig.historyApiFallback.disableDotRule && !req.pathname.includes('.')) &&
-         req.acceptHeader.includes('text/html');
+export function isValidHistoryApi(devServerConfig: d.DevServerConfig, req: d.HttpRequest) {
+  if (!devServerConfig.historyApiFallback) {
+    return false;
+  }
+  if (req.method !== 'GET') {
+    return false;
+  }
+  if (!req.acceptHeader.includes('text/html')) {
+    return false;
+  }
+  if (!devServerConfig.historyApiFallback.disableDotRule && req.pathname.includes('.')) {
+    return false;
+  }
+  return true;
 }

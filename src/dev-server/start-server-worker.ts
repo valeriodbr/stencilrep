@@ -3,6 +3,7 @@ import { createHttpServer } from './server-http';
 import { createWebSocket } from './server-web-socket';
 import { DEV_SERVER_INIT_URL, getBrowserUrl, sendError, sendMsg } from './util';
 import { getEditors } from './open-in-editor';
+import exit from 'exit';
 
 
 export async function startDevServerWorker(process: NodeJS.Process, devServerConfig: d.DevServerConfig, fs: d.FileSystem) {
@@ -42,7 +43,7 @@ export async function startDevServerWorker(process: NodeJS.Process, devServerCon
       httpServer = null;
 
       setTimeout(() => {
-        process.exit();
+        exit(0);
       }, 5000).unref();
 
       process.removeAllListeners('message');

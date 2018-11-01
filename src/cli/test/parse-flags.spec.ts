@@ -12,13 +12,13 @@ describe('parseFlags', () => {
   });
 
   it('should get known and unknown args', () => {
-    process.argv.push('serve', '--address', '127.0.0.1', 'test.spect.ts');
+    process.argv.push('serve', '--address', '127.0.0.1', '--coverage', '--reporters', 'test.spec.ts');
 
     const flags = parseFlags(process);
     expect(flags.task).toBe('serve');
-    expect(flags.args).toEqual(['--address', '127.0.0.1', 'test.spect.ts']);
+    expect(flags.args).toEqual(['--address', '127.0.0.1', '--coverage', '--reporters', 'test.spec.ts']);
     expect(flags.knownArgs).toEqual(['--address', '127.0.0.1']);
-    expect(flags.unknownArgs).toEqual(['test.spect.ts']);
+    expect(flags.unknownArgs).toEqual(['--coverage', '--reporters', 'test.spec.ts']);
   });
 
   it('should use cli args, no npm cmds', () => {
@@ -346,6 +346,12 @@ describe('parseFlags', () => {
     process.argv[2] = '--prod';
     const flags = parseFlags(process);
     expect(flags.prod).toBe(true);
+  });
+
+  it('should parse --profile', () => {
+    process.argv[2] = '--profile';
+    const flags = parseFlags(process);
+    expect(flags.profile).toBe(true);
   });
 
   it('should parse --prerender', () => {
