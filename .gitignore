@@ -15,7 +15,7 @@ log.txt
 node_modules/
 coverage/
 
-/dist/
+dist/
 **/www/build/
 
 # submodule packages
@@ -32,4 +32,4 @@ coverage/
 /screenshot/local-connector.js
 /screenshot/pixel-match.js
 
-test/example/www/*
+test/**/www/*

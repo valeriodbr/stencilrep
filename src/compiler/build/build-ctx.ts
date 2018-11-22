@@ -181,7 +181,7 @@ export class BuildContext implements d.BuildCtx {
 }
 
 
-function getBuildTimestamp() {
+export function getBuildTimestamp() {
   const d = new Date();
 
   // YYYY-MM-DDThh:mm:ss

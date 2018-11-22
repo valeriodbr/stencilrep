@@ -103,6 +103,15 @@ export const RESERVED_PROPERTIES: string[] = [
   'getAttributes',
   'replaceAttributes',
 
+  /**
+   * VDom
+   */
+  'vtag',
+  'vchildren',
+  'vtext',
+  'vattrs',
+  'vkey',
+  'vname',
 
   /**
    * Web Standards / DOM
@@ -129,6 +138,7 @@ export const RESERVED_PROPERTIES: string[] = [
   'cloneNode',
   'closest',
   'composed',
+  'configurable',
   'connectedCallback',
   'content',
   'createComment',
@@ -220,8 +230,15 @@ export const RESERVED_PROPERTIES: string[] = [
   'text',
   'textContent',
   'timeRemaining',
+  'value',
   'warn',
   'webkitMatchesSelector',
   'window',
-  'HTMLElement'
+  'HTMLElement',
+
+  /** CSS Vars Shim */
+  'createHostStyle',
+  'initShim',
+  'customStyleShim',
+  'updateHost'
 ];

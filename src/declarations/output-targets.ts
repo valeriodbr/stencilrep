@@ -1,4 +1,5 @@
 import * as d from '.';
+import { JsonDocs } from './docs';
 
 
 export interface OutputTargetWww extends OutputTargetBase {
@@ -161,12 +162,26 @@ export interface OutputTargetDist extends OutputTargetBase {
   esmLoaderPath?: string;
 }
 
-
-export interface OutputTargetDocs extends OutputTargetBase {
+export interface OutputTargetDocsReadme extends OutputTargetBase {
   type: 'docs';
 
-  readmeDir?: string;
-  jsonFile?: string;
+  dir?: string;
+  strict?: boolean;
+}
+
+
+export interface OutputTargetDocsJson extends OutputTargetBase {
+  type: 'docs-json';
+
+  file: string;
+  strict?: boolean;
+}
+
+
+export interface OutputTargetDocsCustom extends OutputTargetBase {
+  type: 'docs-custom';
+
+  generator: (docs: JsonDocs) => void | Promise<void>;
   strict?: boolean;
 }
 
@@ -204,7 +219,9 @@ export type OutputTargetBuild =
 export type OutputTarget =
  | OutputTargetAngular
  | OutputTargetStats
- | OutputTargetDocs
+ | OutputTargetDocsJson
+ | OutputTargetDocsCustom
+ | OutputTargetDocsReadme
  | OutputTargetHydrate
  | OutputTargetDist
  | OutputTargetWww;

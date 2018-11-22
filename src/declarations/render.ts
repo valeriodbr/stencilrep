@@ -81,7 +81,6 @@ export interface RendererApi {
 
 
 export interface HostSnapshot {
-  $id?: string;
   $attributes?: HostSnapshotAttributes;
 }
 

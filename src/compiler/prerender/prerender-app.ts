@@ -43,6 +43,17 @@ export async function prerenderApp(config: d.Config, compilerCtx: d.CompilerCtx,
 }
 
 
+export function shouldPrerender(config: d.Config) {
+  if (!config.srcIndexHtml) {
+    return false;
+  }
+  const outputTargets = (config.outputTargets as d.OutputTargetWww[]).filter(o => {
+    return o.type === 'www' && o.indexHtml && o.hydrateComponents && o.prerenderLocations && o.prerenderLocations.length > 0;
+  });
+  return (outputTargets.length > 0);
+}
+
+
 async function prerenderOutputTarget(config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx, outputTarget: d.OutputTargetWww, browser: puppeteer.Browser) {
   // get the prerender urls queued up
   const entryPaths = outputTarget.prerenderLocations.map(loc => {

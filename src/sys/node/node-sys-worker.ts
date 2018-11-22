@@ -9,7 +9,9 @@ import { requestLatestCompilerVersion } from './check-version';
 import { ShadowCss } from '../../compiler/style/shadow-css';
 import { transpileToEs5Worker } from '../../compiler/transpile/transpile-to-es5-worker';
 import { validateTypesWorker } from '../../compiler/transpile/validate-types-worker';
-import { minify } from 'terser/dist/browser.bundle.js';
+
+
+const Terser = require('terser/dist/bundle.js');
 
 
 export class NodeSystemWorker {
@@ -24,7 +26,7 @@ export class NodeSystemWorker {
   }
 
   minifyJs(input: string, opts?: any) {
-    const result: d.MinifyJsResult = minify(input, opts);
+    const result: d.MinifyJsResult = Terser.minify(input, opts);
     const diagnostics: d.Diagnostic[] = [];
 
     loadMinifyJsDiagnostics(input, result, diagnostics);

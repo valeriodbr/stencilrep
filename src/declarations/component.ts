@@ -81,6 +81,7 @@ export interface AttributeTypeReferences {
 export interface AttributeTypeInfo {
   text: string;
   optional: boolean;
+  required: boolean;
   typeReferences?: AttributeTypeReferences;
 }
 
@@ -166,6 +167,7 @@ export interface JsDoc {
   documentation: string;
   type: string;
   tags: JSDocTagInfo[];
+  default?: string;
   parameters?: JsDoc[];
   returns?: {
     type: string;
