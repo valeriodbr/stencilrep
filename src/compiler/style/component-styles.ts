@@ -17,6 +17,8 @@ export async function generateComponentStylesMode(config: d.Config, compilerCtx:
     if (cachedCompiledStyles) {
       styleMeta.compiledStyleText = cachedCompiledStyles.compiledStyleText;
       styleMeta.compiledStyleTextScoped = cachedCompiledStyles.compiledStyleTextScoped;
+      styleMeta.compiledStyleTextLegacy = cachedCompiledStyles.compiledStyleTextLegacy;
+      styleMeta.compiledStyleTextScopedLegacy = cachedCompiledStyles.compiledStyleTextScopedLegacy;
       return;
     }
   }
@@ -29,6 +31,8 @@ export async function generateComponentStylesMode(config: d.Config, compilerCtx:
 
   styleMeta.compiledStyleText = compiledStyleMeta.compiledStyleText;
   styleMeta.compiledStyleTextScoped = compiledStyleMeta.compiledStyleTextScoped;
+  styleMeta.compiledStyleTextLegacy = compiledStyleMeta.compiledStyleTextLegacy;
+  styleMeta.compiledStyleTextScopedLegacy = compiledStyleMeta.compiledStyleTextScopedLegacy;
 
   if (config.watch) {
     // since this is a watch and we'll be checking this again
@@ -186,20 +190,34 @@ async function setStyleText(config: d.Config, compilerCtx: d.CompilerCtx, buildC
   }
 
   // auto add css prefixes and minifies when configured
-  styleMeta.compiledStyleText = await optimizeCss(config, compilerCtx, buildCtx.diagnostics, styleMeta.compiledStyleText, filePath, true);
+  const optimizeResults = await Promise.all([
+    optimizeCss(config, compilerCtx, buildCtx.diagnostics, styleMeta.compiledStyleText, filePath, false),
+    optimizeCss(config, compilerCtx, buildCtx.diagnostics, styleMeta.compiledStyleText, filePath, true)
+  ]);
+
+  styleMeta.compiledStyleText = optimizeResults[0];
+  styleMeta.compiledStyleTextLegacy = optimizeResults[1];
 
   if (requiresScopedStyles(cmpMeta.encapsulationMeta, config)) {
     // only create scoped styles if we need to
-    const compiledStyleTextScoped = await scopeComponentCss(config, buildCtx, cmpMeta, modeName, styleMeta.compiledStyleText);
-    styleMeta.compiledStyleTextScoped = compiledStyleTextScoped;
+    const scopedResults = await Promise.all([
+      scopeComponentCss(config, buildCtx, cmpMeta, modeName, styleMeta.compiledStyleText),
+      scopeComponentCss(config, buildCtx, cmpMeta, modeName, styleMeta.compiledStyleTextLegacy)
+    ]);
+
+    styleMeta.compiledStyleTextScoped = scopedResults[0];
+    styleMeta.compiledStyleTextScopedLegacy = scopedResults[1];
+
     if (cmpMeta.encapsulationMeta === ENCAPSULATION.ScopedCss) {
-      styleMeta.compiledStyleText = compiledStyleTextScoped;
+      styleMeta.compiledStyleText = styleMeta.compiledStyleTextScoped;
+      styleMeta.compiledStyleTextLegacy = styleMeta.compiledStyleTextScopedLegacy;
     }
   }
 
   // by default the compiledTextScoped === compiledStyleText
   if (!styleMeta.compiledStyleTextScoped) {
     styleMeta.compiledStyleTextScoped = styleMeta.compiledStyleText;
+    styleMeta.compiledStyleTextScopedLegacy = styleMeta.compiledStyleTextScopedLegacy;
   }
 
   let addStylesUpdate = false;
@@ -248,6 +266,8 @@ async function setStyleText(config: d.Config, compilerCtx: d.CompilerCtx, buildC
 
   styleMeta.compiledStyleText = escapeCssForJs(styleMeta.compiledStyleText);
   styleMeta.compiledStyleTextScoped = escapeCssForJs(styleMeta.compiledStyleTextScoped);
+  styleMeta.compiledStyleTextLegacy = escapeCssForJs(styleMeta.compiledStyleTextLegacy);
+  styleMeta.compiledStyleTextScopedLegacy = escapeCssForJs(styleMeta.compiledStyleTextScopedLegacy);
 
   return styleMeta;
 }

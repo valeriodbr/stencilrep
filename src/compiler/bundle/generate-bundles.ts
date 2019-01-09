@@ -111,7 +111,7 @@ async function generateBundleMode(config: d.Config, compilerCtx: d.CompilerCtx, 
   let bundleId: string;
   const promises = rawModules.map(async module => {
     const chunk = module.list[chunkIndex];
-    const jsText = injectStyleMode(entryModule.moduleFiles, chunk.code, modeName, false);
+    const jsText = injectStyleMode(entryModule.moduleFiles, chunk.code, modeName, false, module.sourceTarget);
 
     if (!bundleId) {
       // the only bundle id comes from mode, no scoped styles and esm
@@ -136,7 +136,7 @@ async function generateBundleMode(config: d.Config, compilerCtx: d.CompilerCtx, 
 
     if (entryModule.requiresScopedStyles && config.buildScoped) {
       // create js text for: mode, scoped styles, esm
-      const scopedJsText = await injectStyleMode(entryModule.moduleFiles, chunk.code, modeName, true);
+      const scopedJsText = await injectStyleMode(entryModule.moduleFiles, chunk.code, modeName, true, module.sourceTarget);
 
       // generate the bundle build for: mode, esm and scoped styles
       if (module.isBrowser) {
@@ -219,15 +219,15 @@ async function generateBundleEsmBuild(config: d.Config, compilerCtx: d.CompilerC
 }
 
 
-function injectStyleMode(moduleFiles: d.ModuleFile[], jsText: string, modeName: string, isScopedStyles: boolean) {
+function injectStyleMode(moduleFiles: d.ModuleFile[], jsText: string, modeName: string, isScopedStyles: boolean, sourceTarget: d.SourceTarget) {
   moduleFiles.forEach(moduleFile => {
-    jsText = injectComponentStyleMode(moduleFile.cmpMeta, modeName, jsText, isScopedStyles);
+    jsText = injectComponentStyleMode(moduleFile.cmpMeta, modeName, jsText, isScopedStyles, sourceTarget);
   });
 
   return jsText;
 }
 
-export function injectComponentStyleMode(cmpMeta: d.ComponentMeta, modeName: string, jsText: string, isScopedStyles: boolean) {
+export function injectComponentStyleMode(cmpMeta: d.ComponentMeta, modeName: string, jsText: string, isScopedStyles: boolean, sourceTarget: d.SourceTarget) {
   if (typeof jsText !== 'string') {
     return '';
   }
@@ -242,13 +242,22 @@ export function injectComponentStyleMode(cmpMeta: d.ComponentMeta, modeName: str
     if (modeStyles) {
       if (isScopedStyles) {
         // we specifically want scoped css
-        styleText = modeStyles.compiledStyleTextScoped;
+        if (sourceTarget === 'es5') {
+          styleText = modeStyles.compiledStyleTextScopedLegacy;
+        } else {
+          styleText = modeStyles.compiledStyleTextScoped;
+        }
+
       }
       if (!styleText) {
         // either we don't want scoped css
         // or we DO want scoped css, but we don't have any
         // use the un-scoped css
-        styleText = modeStyles.compiledStyleText || '';
+        if (sourceTarget === 'es5') {
+          styleText = modeStyles.compiledStyleTextLegacy || '';
+        } else {
+          styleText = modeStyles.compiledStyleText || '';
+        }
       }
 
     } else {
@@ -256,13 +265,21 @@ export function injectComponentStyleMode(cmpMeta: d.ComponentMeta, modeName: str
       if (modeStyles) {
         if (isScopedStyles) {
           // we specifically want scoped css
-          styleText = modeStyles.compiledStyleTextScoped;
+          if (sourceTarget === 'es5') {
+            styleText = modeStyles.compiledStyleTextScopedLegacy;
+          } else {
+            styleText = modeStyles.compiledStyleTextScoped;
+          }
         }
         if (!styleText) {
           // either we don't want scoped css
           // or we DO want scoped css, but we don't have any
           // use the un-scoped css
-          styleText = modeStyles.compiledStyleText || '';
+          if (sourceTarget === 'es5') {
+            styleText = modeStyles.compiledStyleTextLegacy || '';
+          } else {
+            styleText = modeStyles.compiledStyleText || '';
+          }
         }
       }
     }

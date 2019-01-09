@@ -11,6 +11,8 @@ export interface StyleMeta {
   externalStyles?: ExternalStyleMeta[];
   compiledStyleText?: string;
   compiledStyleTextScoped?: string;
+  compiledStyleTextLegacy?: string;
+  compiledStyleTextScopedLegacy?: string;
 }
 
 

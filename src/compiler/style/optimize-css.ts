@@ -8,6 +8,11 @@ export async function optimizeCss(config: d.Config, compilerCtx: d.CompilerCtx, 
     return styleText;
   }
 
+  if (!legacyBuild && styleText.includes('legacy-start')) {
+    styleText = styleText.replace(/\/\* legacy-start \*\//g, '/*')
+                         .replace(/\/\* legacy-end \*\//g, '*/');
+  }
+
   if ((config.autoprefixCss === false || config.autoprefixCss === null) && !config.minifyCss) {
     // don't wanna autoprefix or minify, so just skip this
     return styleText;

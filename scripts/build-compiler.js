@@ -126,22 +126,24 @@ function updateBuildIds(buildId, input) {
   let output = input;
 
   // increment this number to bust the cache entirely
-  const CACHE_BUSTER = 1;
+  const TRANSPILE_CACHE_BUSTER = 1;
+  const MINIFY_JS_CACHE_BUSTER = 1;
+  const OPTIMIZE_CSS_CACHE_BUSTER = 2;
 
   output = output.replace(/__BUILDID__/g, buildId);
 
   let transpilePkg = require('../node_modules/typescript/package.json');
-  let transpileId = transpilePkg.name + transpilePkg.version + CACHE_BUSTER;
+  let transpileId = transpilePkg.name + transpilePkg.version + TRANSPILE_CACHE_BUSTER;
   output = output.replace(/__BUILDID:TRANSPILE__/g, transpileId);
 
   let minifyJsPkg = require('../node_modules/terser/package.json');
-  let minifyJsId = minifyJsPkg.name + minifyJsPkg.version + CACHE_BUSTER;
+  let minifyJsId = minifyJsPkg.name + minifyJsPkg.version + MINIFY_JS_CACHE_BUSTER;
   output = output.replace(/__BUILDID:MINIFYJS__/g, minifyJsId);
 
   let autoprefixerPkg = require('../node_modules/autoprefixer/package.json');
   let cssnanoPkg = require('../node_modules/cssnano/package.json');
   let postcssPkg = require('../node_modules/postcss/package.json');
-  let id = autoprefixerPkg.name + autoprefixerPkg.version + '_' + cssnanoPkg.name + cssnanoPkg.version + '_' + postcssPkg.name + postcssPkg.version + '_' + CACHE_BUSTER;
+  let id = autoprefixerPkg.name + autoprefixerPkg.version + '_' + cssnanoPkg.name + cssnanoPkg.version + '_' + postcssPkg.name + postcssPkg.version + '_' + OPTIMIZE_CSS_CACHE_BUSTER;
   output = output.replace(/__BUILDID:OPTIMIZECSS__/g, id);
 
   return output;

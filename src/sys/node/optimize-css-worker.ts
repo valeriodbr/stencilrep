@@ -38,8 +38,6 @@ export async function optimizeCssWorker(inputOpts: d.OptimizeCssInput) {
       });
     });
 
-    output.css = result.css;
-
   } catch (e) {
     catchError(output.diagnostics, e);
   }
@@ -48,11 +46,28 @@ export async function optimizeCssWorker(inputOpts: d.OptimizeCssInput) {
 }
 
 
-export function addAutoprefixer(inputOpts: d.OptimizeCssInput) {
-  const autoprefixerOpts = (inputOpts.autoprefixer != null && typeof inputOpts.autoprefixer === 'object') ? inputOpts.autoprefixer : DEFAULT_AUTOPREFIX_LEGACY;
+function addAutoprefixer(inputOpts: d.OptimizeCssInput) {
+  if (inputOpts.autoprefixer != null && typeof inputOpts.autoprefixer === 'object') {
+    return autoprefixer(inputOpts.autoprefixer);
+  }
 
-  return autoprefixer(autoprefixerOpts);
+  if (inputOpts.legecyBuild) {
+    return autoprefixer(DEFAULT_AUTOPREFIX_LEGACY);
+  }
+
+  return autoprefixer(DEFAULT_AUTOPREFIX);
 }
+
+
+const DEFAULT_AUTOPREFIX: Options = {
+  browsers: [
+    'iOS >= 10',
+    'Android >= 5.0'
+  ],
+  cascade: false,
+  remove: false,
+  flexbox: 'no-2009'
+};
 
 
 const DEFAULT_AUTOPREFIX_LEGACY: Options = {
