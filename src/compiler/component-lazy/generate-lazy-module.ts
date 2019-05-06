@@ -135,8 +135,11 @@ export function sortBundleComponents(a: d.ComponentCompilerMeta, b: d.ComponentC
   if (a.dependants.length < b.dependants.length) return -1;
   if (a.dependants.length > b.dependants.length) return 1;
 
-  if (a.dependencies.length > b.dependencies.length) return -1;
-  if (a.dependencies.length < b.dependencies.length) return 1;
+  if (a.dependencies.length < b.dependencies.length) return -1;
+  if (a.dependencies.length > b.dependencies.length) return 1;
+
+  if (a.dependants.length > b.dependencies.length) return -1;
+  if (a.dependants.length < b.dependencies.length) return 1;
 
   if (a.tagName < b.tagName) return -1;
   if (a.tagName > b.tagName) return 1;
