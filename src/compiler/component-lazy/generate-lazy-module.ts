@@ -101,7 +101,7 @@ function formatLazyBundlesRuntimeMeta(bundleModules: d.BundleModule[]) {
   return stringifyRuntimeData(lazyBundles);
 }
 
-function formatLazyRuntimeBundle(bundleModule: d.BundleModule): d.LazyBundleRuntimeData {
+export function formatLazyRuntimeBundle(bundleModule: d.BundleModule): d.LazyBundleRuntimeData {
   let bundleId: any;
   if (bundleModule.outputs.length === 0) {
     throw new Error('bundleModule.output must be at least one');
@@ -119,11 +119,31 @@ function formatLazyRuntimeBundle(bundleModule: d.BundleModule): d.LazyBundleRunt
     bundleId = bundleModule.outputs[0].bundleId;
   }
 
+  const bundleCmps = bundleModule.cmps.slice().sort(sortBundleComponents);
+
   return [
     bundleId,
-    bundleModule.cmps.map(cmp => formatComponentRuntimeMeta(cmp, true))
+    bundleCmps.map(cmp => formatComponentRuntimeMeta(cmp, true))
   ];
 }
+
+
+export function sortBundleComponents(a: d.ComponentCompilerMeta, b: d.ComponentCompilerMeta) {
+  if (a.dependants.includes(b.tagName)) return -1;
+  if (b.dependants.includes(a.tagName)) return 1;
+
+  if (a.dependants.length < b.dependants.length) return -1;
+  if (a.dependants.length > b.dependants.length) return 1;
+
+  if (a.dependencies.length > b.dependencies.length) return -1;
+  if (a.dependencies.length < b.dependencies.length) return 1;
+
+  if (a.tagName < b.tagName) return -1;
+  if (a.tagName > b.tagName) return 1;
+
+  return 0;
+}
+
 
 async function convertChunk(
   config: d.Config, compilerCtx: d.CompilerCtx, buildCtx: d.BuildCtx,
