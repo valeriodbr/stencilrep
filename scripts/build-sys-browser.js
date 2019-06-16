@@ -4,6 +4,7 @@ const rollup = require('rollup');
 const rollupResolve = require('rollup-plugin-node-resolve');
 const rollupCommonjs = require('rollup-plugin-commonjs');
 const rollupJson = require('rollup-plugin-json');
+const rollupNodePolyfills = require('rollup-plugin-node-polyfills');
 const { urlPlugin } = require('./plugin-url');
 const terser = require('terser');
 const { run, transpile, updateBuildIds, relativeResolve } = require('./script-utils');
@@ -22,36 +23,13 @@ async function bundleBrowserSys() {
     input: inputPath,
     external: [],
     plugins: [
+      rollupNodePolyfills({
+        fs: true,
+        crypto: false
+      }),
       (() => {
         return {
           resolveId(importee) {
-            if (importee === 'buffer') {
-              return require.resolve(path.join(ROOT_DIR, 'node_modules', 'buffer'));
-            }
-            if (importee === 'crypto' || importee === 'module') {
-              return path.join(HELPERS, 'empty.js');
-            }
-            if (importee === 'events') {
-              return path.join(HELPERS, 'browser-events.js');
-            }
-            if (importee === 'fs') {
-              return path.join(HELPERS, 'browser-fs.js');
-            }
-            if (importee === 'os') {
-              return path.join(HELPERS, 'browser-os.js');
-            }
-            if (importee === 'path') {
-              return require.resolve('path-browserify');
-            }
-            if (importee === 'resolve') {
-              return path.join(HELPERS, 'resolve.js');
-            }
-            if (importee === 'stream') {
-              return path.join(HELPERS, 'browser-stream.js');
-            }
-            if (importee === 'util') {
-              return require.resolve(path.join(ROOT_DIR, 'node_modules', 'util'));
-            }
             if (importee === '@utils') {
               return path.join(TRANSPILED_DIR, 'utils', 'index.js');
             }
@@ -84,6 +62,7 @@ async function bundleBrowserSys() {
     ],
     onwarn: (message) => {
       if (message.code === 'CIRCULAR_DEPENDENCY') return;
+      if (message.code === 'THIS_IS_UNDEFINED') return;
       console.error(message);
     }
   });
@@ -132,7 +111,12 @@ function escapeForJs(code) {
 run(async () => {
   transpile(path.join('..', 'src', 'sys', 'browser', 'tsconfig.json'));
 
-  await bundleBrowserSys();
+  try {
+    await bundleBrowserSys();
+  } catch (e) {
+    console.log(e);
+    throw e;
+  }
 
   await fs.remove(TRANSPILED_DIR);
 });
